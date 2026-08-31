@@ -1,59 +1,34 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+const express = require('express')
+const path = require('path')
+const app = express()
+const PORT = process.env.PORT || 4000
+const server = app.listen(PORT, () => console.log(`💬 server on port ${PORT}`))
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const io = require('socket.io')(server)
 
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, 'public')))
 
-const users = {};
+let socketsConected = new Set()
 
-io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+io.on('connection', onConnected)
 
-  // Register user
-  socket.on("register", (name) => {
-    users[name] = socket.id;
-    socket.username = name;
+function onConnected(socket) {
+  console.log('Socket connected', socket.id)
+  socketsConected.add(socket.id)
+  io.emit('clients-total', socketsConected.size)
 
-    console.log(`${name} registered`);
-  });
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected', socket.id)
+    socketsConected.delete(socket.id)
+    io.emit('clients-total', socketsConected.size)
+  })
 
-  // One-to-one message
-  socket.on("private message", ({ to, message }) => {
-    const targetSocketId = users[to];
+  socket.on('message', (data) => {
+    // console.log(data)
+    socket.broadcast.emit('chat-message', data)
+  })
 
-    if (!targetSocketId) {
-      socket.emit("message error", {
-        message: `${to} is not online`,
-      });
-      return;
-    }
-
-    // Send only to the receiver
-    io.to(targetSocketId).emit("private message", {
-      from: socket.username,
-      message,
-    });
-
-    // Send back to sender
-    socket.emit("private message", {
-      from: socket.username,
-      message,
-    });
-  });
-
-  socket.on("disconnect", () => {
-    if (socket.username) {
-      delete users[socket.username];
-    }
-
-    console.log("User disconnected:", socket.id);
-  });
-});
-
-server.listen(4000, () => {
-  console.log("Server running on http://localhost:4000");
-});
+  socket.on('feedback', (data) => {
+    socket.broadcast.emit('feedback', data)
+  })
+}
