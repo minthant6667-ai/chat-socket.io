@@ -15,9 +15,9 @@ e.preventDefault()
 sendMessage()
 })
 
-// Update total clients
-socket.on('clients-total', (data) => {
-clientsTotal.innerText = `Total Clients: ${data}`
+// Update total clients 
+socket.on('clients-total', (data) => { 
+  clientsTotal.innerText = `${data} ${data === 1 ? 'user' : 'users'} online`
 })
 
 // Send message
