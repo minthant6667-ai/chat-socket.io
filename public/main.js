@@ -1,122 +1,99 @@
 const socket = io()
 
-const clientsTotal = document.getElementById('client-total')
-
-const messageContainer = document.getElementById('message-container')
-const nameInput = document.getElementById('name-input')
 const messageForm = document.getElementById('message-form')
 const messageInput = document.getElementById('message-input')
+const messageContainer = document.getElementById('message-container')
+const nameInput = document.getElementById('name-input')
+const clientTotal = document.getElementById('client-total')
+const feedback = document.getElementById('feedback')
+const recipientSelect = document.getElementById('recipient-select')
 
-const messageTone = new Audio('/message-tone.mp3')
+// Join chat
+nameInput.addEventListener('change', () => {
+  const name = nameInput.value.trim() || 'anonymous'
 
-// Send message when form is submitted
+  socket.emit('join', name)
+})
+
+// Join automatically when page loads
+socket.emit('join', nameInput.value.trim() || 'anonymous')
+
+// Receive user list
+socket.on('user-list', (users) => {
+  recipientSelect.innerHTML = '<option value="">Select user</option>'
+
+  users.forEach((user) => {
+    // Don't show yourself
+    if (user.id !== socket.id) {
+      const option = document.createElement('option')
+
+      option.value = user.id
+      option.textContent = user.name
+
+      recipientSelect.appendChild(option)
+    }
+  })
+})
+
+// Send private message
 messageForm.addEventListener('submit', (e) => {
-e.preventDefault()
-sendMessage()
+  e.preventDefault()
+
+  const message = messageInput.value.trim()
+  const name = nameInput.value.trim() || 'anonymous'
+  const targetSocketId = recipientSelect.value
+
+  if (message === '') return
+
+  if (!targetSocketId) {
+    alert('Please select a user')
+    return
+  }
+
+  socket.emit('private-message', {
+    targetSocketId,
+    name,
+    message,
+  })
+
+  messageInput.value = ''
+  messageInput.focus()
 })
 
-// Update total clients
-socket.on('clients-total', (data) => {
-clientsTotal.innerText = `Total Clients: ${data}`
-})
+// Receive private message
+socket.on('private-message', (data) => {
+  const messageElement = document.createElement('li')
 
-// Send message
-function sendMessage() {
-const message = messageInput.value.trim()
+  messageElement.classList.add('message-left')
 
-if (!message) return
-
-const data = {
-name: nameInput.value.trim() || 'anonymous',
-message: message,
-dateTime: new Date(),
-}
-
-socket.emit('message', data)
-addMessageToUI(true, data)
-
-messageInput.value = ''
-messageInput.focus()
-}
-
-// Receive message from another client
-socket.on('chat-message', (data) => {
-messageTone.play().catch(() => {})
-addMessageToUI(false, data)
-})
-
-// Add message to UI
-function addMessageToUI(isOwnMessage, data) {
-clearFeedback()
-
-const element = `     <li class="${isOwnMessage ? 'message-right' : 'message-left'}">       <p class="message">
-        ${data.message}         <span>${data.name} ● ${moment(data.dateTime).fromNow()}</span>       </p>     </li>
+  messageElement.innerHTML = `
+    <p class="message">
+      ${data.message}
+      <span>${data.name}</span>
+    </p>
   `
 
-messageContainer.innerHTML += element
-
-scrollToBottom()
-}
-
-// Scroll to the latest message
-function scrollToBottom() {
-messageContainer.scrollTo({
-top: messageContainer.scrollHeight,
-behavior: 'smooth',
-})
-}
-
-// Show typing feedback
-function sendTypingFeedback() {
-const name = nameInput.value.trim() || 'anonymous'
-
-socket.emit('feedback', {
-feedback: `✍️ ${name} is typing a message`,
-})
-}
-
-// Message input focus
-messageInput.addEventListener('focus', () => {
-sendTypingFeedback()
+  messageContainer.appendChild(messageElement)
+  messageContainer.scrollTop = messageContainer.scrollHeight
 })
 
-// Message input typing
+// Typing
 messageInput.addEventListener('input', () => {
-if (messageInput.value.trim()) {
-sendTypingFeedback()
-} else {
-socket.emit('feedback', {
-feedback: '',
-})
-}
+  socket.emit('typing', {
+    name: nameInput.value.trim() || 'anonymous',
+  })
 })
 
-// Message input blur
-messageInput.addEventListener('blur', () => {
-socket.emit('feedback', {
-feedback: '',
-})
-})
+// Receive typing
+socket.on('typing', (data) => {
+  feedback.textContent = `✍️ ${data.name} is typing...`
 
-// Receive typing feedback
-socket.on('feedback', (data) => {
-clearFeedback()
-
-if (!data.feedback) return
-
-const element = `     <li class="message-feedback">       <p class="feedback" id="feedback">${data.feedback}</p>     </li>
-  `
-
-messageContainer.innerHTML += element
-
-scrollToBottom()
+  setTimeout(() => {
+    feedback.textContent = ''
+  }, 1000)
 })
 
-// Clear typing feedback
-function clearFeedback() {
-document
-.querySelectorAll('li.message-feedback')
-.forEach((element) => {
-element.remove()
+// Total clients
+socket.on('clients-total', (data) => {
+  clientTotal.textContent = `Total clients: ${data}`
 })
-}

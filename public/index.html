@@ -1,76 +1,83 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>One-to-One Chat</title>
-</head>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css"
+      integrity="sha512-1PKOgIY59xJ8Co8+NE6FZ+LOAZKjy+KY8iq0G4B3CyeY6wYHN3yt9PW0XpSriVlkMXe40PTKnXrLnZ9+fkDaog=="
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <title>Chat app</title>
+  </head>
+  <body>
+    <h1 class="title">iChat 💬</h1>
+    <div class="main">
+      <div class="name">
+        <span><i class="far fa-user"></i></span>
+        <input
+          type="text"
+          id="name-input"
+          class="name-input"
+          value="anonymous"
+          maxlength="20"
+        />
+      </div>
 
-<body>
+      <ul class="message-container" id="message-container">
+        <li class="message-feedback">
+          <p class="feedback" id="feedback"></p>
+        </li>
 
-  <h2>One-to-One Chat</h2>
+  <!-- These li elements are only for reference -->
+  <!--
+  <li class="message-left">
+    <p class="message">
+      lorem impsun
+      <span>bluebird ● 26 July 10:40</span>
+    </p>
+  </li>
 
-  <input id="nameInput" placeholder="Your name">
-  <button id="registerBtn">Register</button>
+  <li class="message-right">
+    <p class="message">
+      lorem impsun
+      <span>bluebird ● 26 July 10:40</span>
+    </p>
+  </li>
+  -->
+      </ul>
 
-  <br><br>
+      <div class="recipient">
+        <label for="recipient-select">Chat with:</label>
 
-  <input id="toInput" placeholder="Send to">
-  <input id="messageInput" placeholder="Message">
-  <button id="sendBtn">Send</button>
+        <select id="recipient-select">
+       <option value="">Select user</option>
+  </select>
+</div>
 
-  <ul id="messages"></ul>
+      <form class="message-form" id="message-form">
+        <input
+          type="text"
+          name="message"
+          id="message-input"
+          class="message-input"
+        />
+        <div class="v-divider"></div>
+        <button type="submit" class="send-button">
+          send <span><i class="fas fa-paper-plane"></i></span>
+        </button>
+      </form>
+    </div>
+    <h3 class="clients-total" id="client-total">Total clients: 2</h3>
 
-  <script src="/socket.io/socket.io.js"></script>
-
-  <script>
-    const socket = io();
-
-    const nameInput = document.getElementById("nameInput");
-    const registerBtn = document.getElementById("registerBtn");
-
-    const toInput = document.getElementById("toInput");
-    const messageInput = document.getElementById("messageInput");
-    const sendBtn = document.getElementById("sendBtn");
-
-    const messages = document.getElementById("messages");
-
-    // Register username
-    registerBtn.addEventListener("click", () => {
-      const name = nameInput.value.trim();
-
-      if (!name) return;
-
-      socket.emit("register", name);
-    });
-
-    // Send one-to-one message
-    sendBtn.addEventListener("click", () => {
-      const to = toInput.value.trim();
-      const message = messageInput.value.trim();
-
-      if (!to || !message) return;
-
-      socket.emit("private message", {
-        to,
-        message,
-      });
-
-      messageInput.value = "";
-    });
-
-    // Receive private message
-    socket.on("private message", (data) => {
-      const li = document.createElement("li");
-
-      li.textContent = `${data.from}: ${data.message}`;
-
-      messages.appendChild(li);
-    });
-
-    // User not found
-    socket.on("message error", (data) => {
-      alert(data.message);
-    });
-  </script>
-
-</body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.28.0/moment.min.js"
+      integrity="sha512-Q1f3TS3vSt1jQ8AwP2OuenztnLU6LwxgyyYOG1jgMW/cbEMHps/3wjvnl1P3WTrF3chJUWEoxDUEjMxDV8pujg=="
+      crossorigin="anonymous"
+    ></script>
+    <script src="main.js"></script>
+  </body>
 </html>
