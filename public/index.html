@@ -1,107 +1,264 @@
 <!DOCTYPE html>
-
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <title>Socket.IO Chat</title>
 
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css"
-  integrity="sha512-1PKOgIY59xJ8Co8+NE6FZ+LOAZKjy+KY8iq0G4B3CyeY6wYHN3yt9PW0XpSriVlkMXe40PTKnXrLnZ9+fkDaog=="
-  crossorigin="anonymous"
-/>
+  <script src="/socket.io/socket.io.js"></script>
 
-<link rel="stylesheet" href="style.css" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-<title>iChat - Real-Time Chat</title>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+    }
 
+    .chat-container {
+      width: 90%;
+      max-width: 700px;
+      height: 90vh;
+      margin: 30px auto;
+      background: white;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
 
-  </head>
+    .header {
+      padding: 20px;
+      background: #333;
+      color: white;
+    }
 
-  <body>
-    <header class="chat-header">
-      <h1 class="title">iChat 💬</h1>
-      <p class="subtitle">Real-time chat room</p>
-    </header>
+    .header h2 {
+      margin: 0 0 5px;
+    }
 
+    #clients-total {
+      font-size: 14px;
+      opacity: 0.8;
+    }
 
-<main class="main">
-  <!-- Username -->
-  <div class="name">
-    <span>
-      <i class="far fa-user"></i>
-    </span>
+    #chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
 
-    <input
-      type="text"
-      id="name-input"
-      class="name-input"
-      value="anonymous"
-      maxlength="20"
-      placeholder="Enter your name"
-      autocomplete="off"
-    />
+    .message {
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      background: #eeeeee;
+      border-radius: 8px;
+    }
+
+    .message .name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    #feedback {
+      min-height: 25px;
+      padding: 0 20px;
+      color: #777;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+      padding: 15px;
+      border-top: 1px solid #ddd;
+    }
+
+    #message-input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    #send-button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+    }
+
+    #send-button:hover {
+      background: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="chat-container">
+
+    <div class="header">
+      <h2>💬 Socket.IO Chat</h2>
+      <div>
+        Online users:
+        <span id="clients-total">0</span>
+      </div>
+    </div>
+
+    <div id="chat-messages"></div>
+
+    <!-- Typing indicator -->
+    <div id="feedback"></div>
+
+    <div class="input-area">
+      <input
+        type="text"
+        id="message-input"
+        placeholder="Type a message..."
+        autocomplete="off"
+      >
+
+      <button id="send-button">
+        Send
+      </button>
+    </div>
+
   </div>
 
-  <!-- Online Status -->
-  <div class="online-status">
-    <span class="status-dot"></span>
-    <span>Online</span>
-  </div>
+  <script>
+    const socket = io()
 
-  <!-- Messages -->
-  <ul class="message-container" id="message-container"></ul>
+    const name = prompt('Enter your name:') || 'Anonymous'
 
-  <!-- Typing Feedback -->
-  <div class="typing-area">
-    <p class="feedback" id="feedback"></p>
-  </div>
+    const messageInput = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+    const chatMessages = document.getElementById('chat-messages')
+    const feedback = document.getElementById('feedback')
+    const clientsTotal = document.getElementById('clients-total')
 
-  <!-- Message Form -->
-  <form class="message-form" id="message-form">
-    <input
-      type="text"
-      name="message"
-      id="message-input"
-      class="message-input"
-      placeholder="Type your message..."
-      autocomplete="off"
-      required
-    />
+    let typingTimer
 
-    <div class="v-divider"></div>
+    // -------------------------
+    // Online users
+    // -------------------------
 
-    <button type="submit" class="send-button">
-      Send
-      <span>
-        <i class="fas fa-paper-plane"></i>
-      </span>
-    </button>
-  </form>
-</main>
+    socket.on('clients-total', (total) => {
+      clientsTotal.textContent = total
+    })
 
-<!-- Client Counter -->
-<footer class="chat-footer">
-  <h3 class="clients-total" id="client-total">
-    Total clients: 0
-  </h3>
-</footer>
+    // -------------------------
+    // Send message
+    // -------------------------
 
-<!-- Socket.IO -->
-<script src="/socket.io/socket.io.js"></script>
+    function sendMessage() {
+      const message = messageInput.value.trim()
 
-<!-- Moment.js -->
-<script
-  src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.28.0/moment.min.js"
-  integrity="sha512-Q1f3TS3vSt1jQ8AwP2OuenztnLU6LwxgyyYOG1jgMW/cbEMHps/3wjvnl1P3WTrF3chJUWEoxDUEjMxDV8pujg=="
-  crossorigin="anonymous"
-></script>
+      if (message === '') {
+        return
+      }
 
-<!-- Chat JavaScript -->
-<script src="main.js"></script>
+      const data = {
+        name: name,
+        message: message,
+        dateTime: new Date().toLocaleTimeString(),
+      }
 
+      // Show message on our own screen
+      addMessage(data, true)
 
-  </body>
+      // Send message to other users
+      socket.emit('message', data)
+
+      // Clear input
+      messageInput.value = ''
+
+      // Stop typing
+      socket.emit('feedback', {
+        feedback: '',
+      })
+    }
+
+    sendButton.addEventListener('click', sendMessage)
+
+    // Press Enter to send
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        sendMessage()
+      }
+    })
+
+    // -------------------------
+    // Receive message
+    // -------------------------
+
+    socket.on('chat-message', (data) => {
+      addMessage(data, false)
+    })
+
+    // -------------------------
+    // Display message
+    // -------------------------
+
+    function addMessage(data, ownMessage) {
+      const messageElement = document.createElement('div')
+
+      messageElement.classList.add('message')
+
+      if (ownMessage) {
+        messageElement.style.textAlign = 'right'
+      }
+
+      messageElement.innerHTML = `
+        <div class="name">${data.name}</div>
+        <div>${data.message}</div>
+        <small>${data.dateTime}</small>
+      `
+
+      chatMessages.appendChild(messageElement)
+
+      chatMessages.scrollTop = chatMessages.scrollHeight
+    }
+
+    // -------------------------
+    // TYPING FEATURE
+    // -------------------------
+
+    messageInput.addEventListener('input', () => {
+
+      // Tell other users that we are typing
+      socket.emit('feedback', {
+        feedback: `${name} is typing...`,
+      })
+
+      // Reset timer
+      clearTimeout(typingTimer)
+
+      // Stop typing after 1 second
+      typingTimer = setTimeout(() => {
+        socket.emit('feedback', {
+          feedback: '',
+        })
+      }, 1000)
+    })
+
+    // -------------------------
+    // Receive typing indicator
+    // -------------------------
+
+    socket.on('feedback', (data) => {
+      feedback.textContent = data.feedback
+    })
+  </script>
+
+</body>
 </html>
