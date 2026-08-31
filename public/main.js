@@ -9,82 +9,114 @@ const messageInput = document.getElementById('message-input')
 
 const messageTone = new Audio('/message-tone.mp3')
 
+// Send message when form is submitted
 messageForm.addEventListener('submit', (e) => {
-  e.preventDefault()
-  sendMessage()
+e.preventDefault()
+sendMessage()
 })
 
+// Update total clients
 socket.on('clients-total', (data) => {
-  clientsTotal.innerText = `Total Clients: ${data}`
+clientsTotal.innerText = `Total Clients: ${data}`
 })
 
+// Send message
 function sendMessage() {
-  if (messageInput.value === '') return
-  // console.log(messageInput.value)
-  const data = {
-    name: nameInput.value,
-    message: messageInput.value,
-    dateTime: new Date(),
-  }
-  socket.emit('message', data)
-  addMessageToUI(true, data)
-  messageInput.value = ''
+const message = messageInput.value.trim()
+
+if (!message) return
+
+const data = {
+name: nameInput.value.trim() || 'anonymous',
+message: message,
+dateTime: new Date(),
 }
 
+socket.emit('message', data)
+addMessageToUI(true, data)
+
+messageInput.value = ''
+messageInput.focus()
+}
+
+// Receive message from another client
 socket.on('chat-message', (data) => {
-  // console.log(data)
-  messageTone.play()
-  addMessageToUI(false, data)
+messageTone.play().catch(() => {})
+addMessageToUI(false, data)
 })
 
+// Add message to UI
 function addMessageToUI(isOwnMessage, data) {
-  clearFeedback()
-  const element = `
-      <li class="${isOwnMessage ? 'message-right' : 'message-left'}">
-          <p class="message">
-            ${data.message}
-            <span>${data.name} ● ${moment(data.dateTime).fromNow()}</span>
-          </p>
-        </li>
-        `
+clearFeedback()
 
-  messageContainer.innerHTML += element
-  scrollToBottom()
-}
-
-function scrollToBottom() {
-  messageContainer.scrollTo(0, messageContainer.scrollHeight)
-}
-
-messageInput.addEventListener('focus', (e) => {
-  socket.emit('feedback', {
-    feedback: `✍️ ${nameInput.value} is typing a message`,
-  })
-})
-
-messageInput.addEventListener('keypress', (e) => {
-  socket.emit('feedback', {
-    feedback: `✍️ ${nameInput.value} is typing a message`,
-  })
-})
-messageInput.addEventListener('blur', (e) => {
-  socket.emit('feedback', {
-    feedback: '',
-  })
-})
-
-socket.on('feedback', (data) => {
-  clearFeedback()
-  const element = `
-        <li class="message-feedback">
-          <p class="feedback" id="feedback">${data.feedback}</p>
-        </li>
+const element = `     <li class="${isOwnMessage ? 'message-right' : 'message-left'}">       <p class="message">
+        ${data.message}         <span>${data.name} ● ${moment(data.dateTime).fromNow()}</span>       </p>     </li>
   `
-  messageContainer.innerHTML += element
+
+messageContainer.innerHTML += element
+
+scrollToBottom()
+}
+
+// Scroll to the latest message
+function scrollToBottom() {
+messageContainer.scrollTo({
+top: messageContainer.scrollHeight,
+behavior: 'smooth',
+})
+}
+
+// Show typing feedback
+function sendTypingFeedback() {
+const name = nameInput.value.trim() || 'anonymous'
+
+socket.emit('feedback', {
+feedback: `✍️ ${name} is typing a message`,
+})
+}
+
+// Message input focus
+messageInput.addEventListener('focus', () => {
+sendTypingFeedback()
 })
 
+// Message input typing
+messageInput.addEventListener('input', () => {
+if (messageInput.value.trim()) {
+sendTypingFeedback()
+} else {
+socket.emit('feedback', {
+feedback: '',
+})
+}
+})
+
+// Message input blur
+messageInput.addEventListener('blur', () => {
+socket.emit('feedback', {
+feedback: '',
+})
+})
+
+// Receive typing feedback
+socket.on('feedback', (data) => {
+clearFeedback()
+
+if (!data.feedback) return
+
+const element = `     <li class="message-feedback">       <p class="feedback" id="feedback">${data.feedback}</p>     </li>
+  `
+
+messageContainer.innerHTML += element
+
+scrollToBottom()
+})
+
+// Clear typing feedback
 function clearFeedback() {
-  document.querySelectorAll('li.message-feedback').forEach((element) => {
-    element.parentNode.removeChild(element)
-  })
+document
+.querySelectorAll('li.message-feedback')
+.forEach((element) => {
+element.remove()
+})
 }
