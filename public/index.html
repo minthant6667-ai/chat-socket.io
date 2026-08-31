@@ -1,263 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>Socket.IO Chat</title>
-
-  <script src="/socket.io/socket.io.js"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-    }
-
-    .chat-container {
-      width: 90%;
-      max-width: 700px;
-      height: 90vh;
-      margin: 30px auto;
-      background: white;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    }
-
-    .header {
-      padding: 20px;
-      background: #333;
-      color: white;
-    }
-
-    .header h2 {
-      margin: 0 0 5px;
-    }
-
-    #clients-total {
-      font-size: 14px;
-      opacity: 0.8;
-    }
-
-    #chat-messages {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    .message {
-      margin-bottom: 15px;
-      padding: 10px 15px;
-      background: #eeeeee;
-      border-radius: 8px;
-    }
-
-    .message .name {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    #feedback {
-      min-height: 25px;
-      padding: 0 20px;
-      color: #777;
-      font-size: 14px;
-      font-style: italic;
-    }
-
-    .input-area {
-      display: flex;
-      gap: 10px;
-      padding: 15px;
-      border-top: 1px solid #ddd;
-    }
-
-    #message-input {
-      flex: 1;
-      padding: 12px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-
-    #send-button {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 6px;
-      background: #333;
-      color: white;
-      cursor: pointer;
-    }
-
-    #send-button:hover {
-      background: #555;
-    }
-  </style>
+  <title>One-to-One Chat</title>
 </head>
 
 <body>
 
-  <div class="chat-container">
+  <h2>One-to-One Chat</h2>
 
-    <div class="header">
-      <h2>💬 Socket.IO Chat</h2>
-      <div>
-        Online users:
-        <span id="clients-total">0</span>
-      </div>
-    </div>
+  <input id="nameInput" placeholder="Your name">
+  <button id="registerBtn">Register</button>
 
-    <div id="chat-messages"></div>
+  <br><br>
 
-    <!-- Typing indicator -->
-    <div id="feedback"></div>
+  <input id="toInput" placeholder="Send to">
+  <input id="messageInput" placeholder="Message">
+  <button id="sendBtn">Send</button>
 
-    <div class="input-area">
-      <input
-        type="text"
-        id="message-input"
-        placeholder="Type a message..."
-        autocomplete="off"
-      >
+  <ul id="messages"></ul>
 
-      <button id="send-button">
-        Send
-      </button>
-    </div>
-
-  </div>
+  <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    const socket = io()
+    const socket = io();
 
-    const name = prompt('Enter your name:') || 'Anonymous'
+    const nameInput = document.getElementById("nameInput");
+    const registerBtn = document.getElementById("registerBtn");
 
-    const messageInput = document.getElementById('message-input')
-    const sendButton = document.getElementById('send-button')
-    const chatMessages = document.getElementById('chat-messages')
-    const feedback = document.getElementById('feedback')
-    const clientsTotal = document.getElementById('clients-total')
+    const toInput = document.getElementById("toInput");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-    let typingTimer
+    const messages = document.getElementById("messages");
 
-    // -------------------------
-    // Online users
-    // -------------------------
+    // Register username
+    registerBtn.addEventListener("click", () => {
+      const name = nameInput.value.trim();
 
-    socket.on('clients-total', (total) => {
-      clientsTotal.textContent = total
-    })
+      if (!name) return;
 
-    // -------------------------
-    // Send message
-    // -------------------------
+      socket.emit("register", name);
+    });
 
-    function sendMessage() {
-      const message = messageInput.value.trim()
+    // Send one-to-one message
+    sendBtn.addEventListener("click", () => {
+      const to = toInput.value.trim();
+      const message = messageInput.value.trim();
 
-      if (message === '') {
-        return
-      }
+      if (!to || !message) return;
 
-      const data = {
-        name: name,
-        message: message,
-        dateTime: new Date().toLocaleTimeString(),
-      }
+      socket.emit("private message", {
+        to,
+        message,
+      });
 
-      // Show message on our own screen
-      addMessage(data, true)
+      messageInput.value = "";
+    });
 
-      // Send message to other users
-      socket.emit('message', data)
+    // Receive private message
+    socket.on("private message", (data) => {
+      const li = document.createElement("li");
 
-      // Clear input
-      messageInput.value = ''
+      li.textContent = `${data.from}: ${data.message}`;
 
-      // Stop typing
-      socket.emit('feedback', {
-        feedback: '',
-      })
-    }
+      messages.appendChild(li);
+    });
 
-    sendButton.addEventListener('click', sendMessage)
-
-    // Press Enter to send
-    messageInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        sendMessage()
-      }
-    })
-
-    // -------------------------
-    // Receive message
-    // -------------------------
-
-    socket.on('chat-message', (data) => {
-      addMessage(data, false)
-    })
-
-    // -------------------------
-    // Display message
-    // -------------------------
-
-    function addMessage(data, ownMessage) {
-      const messageElement = document.createElement('div')
-
-      messageElement.classList.add('message')
-
-      if (ownMessage) {
-        messageElement.style.textAlign = 'right'
-      }
-
-      messageElement.innerHTML = `
-        <div class="name">${data.name}</div>
-        <div>${data.message}</div>
-        <small>${data.dateTime}</small>
-      `
-
-      chatMessages.appendChild(messageElement)
-
-      chatMessages.scrollTop = chatMessages.scrollHeight
-    }
-
-    // -------------------------
-    // TYPING FEATURE
-    // -------------------------
-
-    messageInput.addEventListener('input', () => {
-
-      // Tell other users that we are typing
-      socket.emit('feedback', {
-        feedback: `${name} is typing...`,
-      })
-
-      // Reset timer
-      clearTimeout(typingTimer)
-
-      // Stop typing after 1 second
-      typingTimer = setTimeout(() => {
-        socket.emit('feedback', {
-          feedback: '',
-        })
-      }, 1000)
-    })
-
-    // -------------------------
-    // Receive typing indicator
-    // -------------------------
-
-    socket.on('feedback', (data) => {
-      feedback.textContent = data.feedback
-    })
+    // User not found
+    socket.on("message error", (data) => {
+      alert(data.message);
+    });
   </script>
 
 </body>
