@@ -1,3 +1,6 @@
+const authRoutes = require('./routes/auth')
+
+app.use('/api/auth', authRoutes)
 const User = require('./models/User')
 require('dotenv').config()
 
