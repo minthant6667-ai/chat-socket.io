@@ -1,16 +1,36 @@
+const User = require('./models/User')
+require('dotenv').config()
+
 const express = require('express')
 const path = require('path')
+const mongoose = require('mongoose')
 
 const app = express()
 const PORT = process.env.PORT || 4000
 
+// Middleware
+app.use(express.json())
+app.use(express.static(path.join(__dirname, 'public')))
+
+// MongoDB
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+  })
+  .then(() => {
+    console.log('MongoDB connected ✅')
+  })
+  .catch((error) => {
+    console.error('MongoDB connection error:', error.message)
+  })
+
+// Start server — ONLY ONCE
 const server = app.listen(PORT, () => {
   console.log(`💬 server on port ${PORT}`)
 })
 
+// Socket.io — ONLY ONCE
 const io = require('socket.io')(server)
-
-app.use(express.static(path.join(__dirname, 'public')))
 
 let users = new Map()
 
@@ -23,7 +43,6 @@ io.on('connection', (socket) => {
 
     console.log(`${name} joined: ${socket.id}`)
 
-    // Send current users to everyone
     io.emit(
       'user-list',
       Array.from(users).map(([id, name]) => ({
@@ -46,10 +65,8 @@ io.on('connection', (socket) => {
       message,
     }
 
-    // Send ONLY to receiver
     io.to(targetSocketId).emit('private-message', privateMessage)
 
-    // Send back ONLY to sender
     socket.emit('private-message', privateMessage)
   })
 
