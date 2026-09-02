@@ -1,21 +1,31 @@
-const authRoutes = require('./routes/auth')
-
-app.use('/api/auth', authRoutes)
-const User = require('./models/User')
 require('dotenv').config()
 
 const express = require('express')
 const path = require('path')
 const mongoose = require('mongoose')
 
+const authRoutes = require('./routes/auth')
+
 const app = express()
 const PORT = process.env.PORT || 4000
 
+// ====================
 // Middleware
+// ====================
+
 app.use(express.json())
 app.use(express.static(path.join(__dirname, 'public')))
 
+// ====================
+// Authentication Routes
+// ====================
+
+app.use('/api/auth', authRoutes)
+
+// ====================
 // MongoDB
+// ====================
+
 mongoose
   .connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 10000,
@@ -27,12 +37,18 @@ mongoose
     console.error('MongoDB connection error:', error.message)
   })
 
-// Start server — ONLY ONCE
+// ====================
+// Start Server
+// ====================
+
 const server = app.listen(PORT, () => {
   console.log(`💬 server on port ${PORT}`)
 })
 
-// Socket.io — ONLY ONCE
+// ====================
+// Socket.IO
+// ====================
+
 const io = require('socket.io')(server)
 
 let users = new Map()
@@ -40,7 +56,10 @@ let users = new Map()
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id)
 
+  // ====================
   // User joins
+  // ====================
+
   socket.on('join', (name) => {
     users.set(socket.id, name)
 
@@ -57,30 +76,49 @@ io.on('connection', (socket) => {
     io.emit('clients-total', users.size)
   })
 
+  // ====================
   // Private message
+  // ====================
+
   socket.on('private-message', (data) => {
     const { targetSocketId, message, name } = data
 
-    const senderName = users.get(socket.id) || name || 'anonymous'
+    const senderName =
+      users.get(socket.id) || name || 'anonymous'
 
     const privateMessage = {
       name: senderName,
       message,
     }
 
-    io.to(targetSocketId).emit('private-message', privateMessage)
+    // Send to receiver
+    io.to(targetSocketId).emit(
+      'private-message',
+      privateMessage
+    )
 
-    socket.emit('private-message', privateMessage)
+    // Send back to sender
+    socket.emit(
+      'private-message',
+      privateMessage
+    )
   })
 
+  // ====================
   // Typing
+  // ====================
+
   socket.on('typing', (data) => {
     socket.broadcast.emit('typing', data)
   })
 
+  // ====================
   // Disconnect
+  // ====================
+
   socket.on('disconnect', () => {
-    const name = users.get(socket.id) || 'anonymous'
+    const name =
+      users.get(socket.id) || 'anonymous'
 
     users.delete(socket.id)
 
@@ -94,6 +132,9 @@ io.on('connection', (socket) => {
       }))
     )
 
-    io.emit('clients-total', users.size)
+    io.emit(
+      'clients-total',
+      users.size
+    )
   })
 })
