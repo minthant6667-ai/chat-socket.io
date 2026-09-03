@@ -5,24 +5,32 @@ const User = require('../models/User')
 
 const router = express.Router()
 
+// ====================
 // Register
+// ====================
+
 router.post('/register', async (req, res) => {
   try {
-    const { username, password } = req.body
+    const { username, email, password } = req.body
 
-    if (!username || !password) {
+    if (!username || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username and password are required',
+        message: 'Username, email and password are required',
       })
     }
 
-    const existingUser = await User.findOne({ username })
+    const existingUser = await User.findOne({
+      $or: [
+        { username },
+        { email },
+      ],
+    })
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'Username already exists',
+        message: 'Username or email already exists',
       })
     }
 
@@ -30,6 +38,7 @@ router.post('/register', async (req, res) => {
 
     const user = await User.create({
       username,
+      email,
       password: hashedPassword,
     })
 
@@ -39,6 +48,7 @@ router.post('/register', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
+        email: user.email,
       },
     })
   } catch (error) {
@@ -51,17 +61,27 @@ router.post('/register', async (req, res) => {
   }
 })
 
+// ====================
 // Login
+// ====================
+
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body
+    const { email, password } = req.body
 
-    const user = await User.findOne({ username })
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      })
+    }
+
+    const user = await User.findOne({ email })
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid username or password',
+        message: 'Invalid email or password',
       })
     }
 
@@ -73,7 +93,7 @@ router.post('/login', async (req, res) => {
     if (!passwordMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid username or password',
+        message: 'Invalid email or password',
       })
     }
 
@@ -81,6 +101,7 @@ router.post('/login', async (req, res) => {
       {
         userId: user._id,
         username: user.username,
+        email: user.email,
       },
       process.env.JWT_SECRET,
       {
@@ -95,6 +116,7 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
+        email: user.email,
       },
     })
   } catch (error) {

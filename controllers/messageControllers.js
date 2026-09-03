@@ -3,47 +3,90 @@ const Message = require("../models/Message");
 
 async function getGroupMessages(req, res) {
   try {
-    const room = String(req.query.room || "general");
+    const room = req.query.room || "general";
 
     const messages = await Message.find({
-      type: "group",
-      room
+      room: room,
+      receiver: null,
     })
-      .sort({ createdAt: 1 })
-      .limit(100);
+      .populate("sender", "_id username email")
+      .sort({ createdAt: 1 });
 
-    res.json({ messages });
+    res.json({
+      messages: messages.map((message) => ({
+        id: message._id,
+        senderId: message.sender?._id,
+        senderUsername: message.sender?.username,
+        message: message.message,
+        room: message.room,
+        dateTime: message.createdAt,
+        type: "group",
+      })),
+    });
   } catch (error) {
-    console.error("Group history error:", error);
-    res.status(500).json({ message: "Could not load group messages" });
+    console.error("Get group messages error:", error);
+
+    res.status(500).json({
+      message: "Could not load group messages",
+      messages: [],
+    });
   }
 }
 
 async function getPrivateMessages(req, res) {
   try {
-    const otherUserId = String(req.params.userId);
+    const currentUserId = req.user.id;
+    const otherUserId = req.params.userId;
 
     if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
-      return res.status(400).json({ message: "Invalid user id" });
+      return res.status(400).json({
+        message: "Invalid user ID",
+        messages: [],
+      });
     }
 
-    const myId = req.user.id;
-
     const messages = await Message.find({
-      type: "private",
       $or: [
-        { sender: myId, receiver: otherUserId },
-        { sender: otherUserId, receiver: myId }
-      ]
+        {
+          sender: currentUserId,
+          receiver: otherUserId,
+        },
+        {
+          sender: otherUserId,
+          receiver: currentUserId,
+        },
+      ],
     })
-      .sort({ createdAt: 1 })
-      .limit(100);
+      .populate("sender", "_id username email")
+      .populate("receiver", "_id username email")
+      .sort({ createdAt: 1 });
 
-    res.json({ messages });
+    res.json({
+      messages: messages.map((message) => ({
+        id: message._id,
+
+        senderId: message.sender?._id,
+        senderUsername: message.sender?.username,
+
+        receiverId: message.receiver?._id,
+        receiverUsername: message.receiver?.username,
+
+        message: message.message,
+        dateTime: message.createdAt,
+        type: "private",
+      })),
+    });
   } catch (error) {
-    console.error("Private history error:", error);
-    res.status(500).json({ message: "Could not load private messages" });
+    console.error("Get private messages error:", error);
+
+    res.status(500).json({
+      message: "Could not load private messages",
+      messages: [],
+    });
   }
 }
 
-module.exports = { getGroupMessages, getPrivateMessages };
+module.exports = {
+  getGroupMessages,
+  getPrivateMessages,
+};

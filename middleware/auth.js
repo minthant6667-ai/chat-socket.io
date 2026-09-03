@@ -5,11 +5,11 @@ function createToken(user) {
     {
       id: user._id.toString(),
       username: user.username,
-      email: user.email
+      email: user.email,
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "7d"
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
     }
   );
 }
@@ -19,17 +19,33 @@ function authMiddleware(req, res, next) {
     const header = req.headers.authorization;
 
     if (!header || !header.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Authentication required" });
+      return res.status(401).json({
+        message: "Authentication required",
+        messages: [],
+      });
     }
 
     const token = header.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
     req.user = decoded;
+
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    console.error("JWT error:", error.message);
+
+    return res.status(401).json({
+      message: "Invalid or expired token",
+      messages: [],
+    });
   }
 }
 
-module.exports = { createToken, authMiddleware };
+module.exports = {
+  createToken,
+  authMiddleware,
+};

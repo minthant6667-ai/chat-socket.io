@@ -137,14 +137,16 @@ registerForm.addEventListener(
           .getElementById(
             "register-username"
           )
-          .value.trim(),
+          .value
+          .trim(),
 
       email:
         document
           .getElementById(
             "register-email"
           )
-          .value.trim(),
+          .value
+          .trim(),
 
       password:
         document
@@ -176,7 +178,8 @@ loginForm.addEventListener(
           .getElementById(
             "login-email"
           )
-          .value.trim(),
+          .value
+          .trim(),
 
       password:
         document
@@ -234,15 +237,34 @@ async function authenticate(
 
     token = data.token;
 
-    currentUser = data.user;
+    currentUser = {
+      id: data.user.id,
+      username:
+        data.user.username,
+      email:
+        data.user.email
+    };
 
     localStorage.setItem(
       "chat_token",
       token
     );
 
-    startChat();
+    localStorage.setItem(
+      "chat_user",
+      JSON.stringify(
+        currentUser
+      )
+    );
+
+    await startChat();
+
   } catch (error) {
+    console.error(
+      "Authentication error:",
+      error
+    );
+
     authMessage.textContent =
       "Cannot connect to server";
   }
@@ -282,13 +304,22 @@ function connectSocket() {
 
   socket = io({
     auth: {
-      token
+      token: token
     }
   });
+
+  // ======================================
+  // CONNECT
+  // ======================================
 
   socket.on(
     "connect",
     () => {
+      console.log(
+        "Socket connected:",
+        socket.id
+      );
+
       socket.emit(
         "join-room",
         ROOM
@@ -296,15 +327,27 @@ function connectSocket() {
     }
   );
 
+  // ======================================
+  // CONNECT ERROR
+  // ======================================
+
   socket.on(
     "connect_error",
     (error) => {
+      console.error(
+        "Socket connection error:",
+        error.message
+      );
+
       if (
         error.message.includes(
           "expired"
         ) ||
         error.message.includes(
           "Invalid"
+        ) ||
+        error.message.includes(
+          "Authentication"
         )
       ) {
         logout();
@@ -319,7 +362,13 @@ function connectSocket() {
   socket.on(
     "current-user",
     (user) => {
-      currentUser = user;
+      currentUser = {
+        id: user.id,
+        username:
+          user.username,
+        email:
+          user.email
+      };
 
       currentUserElement.textContent =
         `${user.username} (${user.email})`;
@@ -349,7 +398,6 @@ function connectSocket() {
   socket.on(
     "message",
     (data) => {
-      // Group chat is currently open
       if (
         selectedUser === null &&
         data.room === ROOM
@@ -359,7 +407,6 @@ function connectSocket() {
         return;
       }
 
-      // Group chat is NOT open
       if (
         data.room === ROOM
       ) {
@@ -391,7 +438,7 @@ function connectSocket() {
         if (
           selectedUser &&
           String(
-            selectedUser._id
+            selectedUser.id
           ) ===
             String(
               data.receiverId
@@ -404,13 +451,13 @@ function connectSocket() {
       }
 
       // ====================================
-      // RECEIVER IS OPENING THIS CHAT
+      // OPEN PRIVATE CHAT
       // ====================================
 
       if (
         selectedUser &&
         String(
-          selectedUser._id
+          selectedUser.id
         ) === senderId
       ) {
         renderMessage(data);
@@ -419,7 +466,7 @@ function connectSocket() {
       }
 
       // ====================================
-      // RECEIVER IS NOT OPENING THIS CHAT
+      // PRIVATE CHAT NOT OPEN
       // ====================================
 
       increaseUnread(
@@ -466,7 +513,7 @@ function connectSocket() {
       if (
         selectedUser &&
         String(
-          selectedUser._id
+          selectedUser.id
         ) ===
           String(
             data.senderId
@@ -485,7 +532,7 @@ function connectSocket() {
       if (
         selectedUser &&
         String(
-          selectedUser._id
+          selectedUser.id
         ) ===
           String(
             data.senderId
@@ -521,22 +568,39 @@ async function loadUsers() {
         "/messages/users"
       );
 
-    if (!response.ok) {
-      return;
-    }
-
     const data =
       await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Load users error:",
+        data.message
+      );
+
+      return;
+    }
 
     usersList.innerHTML = "";
 
     for (
-      const user of data.users
+      const user of data.users || []
     ) {
+      // Do not show current user
+      if (
+        String(user.id) ===
+        String(currentUser.id)
+      ) {
+        continue;
+      }
+
       createUserButton(user);
     }
+
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Load users error:",
+      error
+    );
   }
 }
 
@@ -544,7 +608,9 @@ async function loadUsers() {
 // CREATE USER BUTTON
 // ========================================
 
-function createUserButton(user) {
+function createUserButton(
+  user
+) {
   const button =
     document.createElement(
       "button"
@@ -554,14 +620,14 @@ function createUserButton(user) {
     "user-button";
 
   button.dataset.userId =
-    user._id;
+    String(user.id);
 
   button.innerHTML = `
     <div class="user-info">
 
       <span
         class="online-dot"
-        data-online-for="${user._id}"
+        data-online-for="${user.id}"
       >⚪</span>
 
       <span class="username">
@@ -574,7 +640,7 @@ function createUserButton(user) {
 
     <span
       class="unread-count hidden"
-      data-unread-for="${user._id}"
+      data-unread-for="${user.id}"
     ></span>
   `;
 
@@ -607,11 +673,13 @@ async function selectGroupChat() {
     .querySelectorAll(
       ".user-button"
     )
-    .forEach((button) => {
-      button.classList.remove(
-        "active"
-      );
-    });
+    .forEach(
+      (button) => {
+        button.classList.remove(
+          "active"
+        );
+      }
+    );
 
   chatTitle.textContent =
     "General Group";
@@ -632,14 +700,24 @@ async function selectGroupChat() {
     const data =
       await response.json();
 
+    if (!response.ok) {
+      console.error(
+        "Group messages error:",
+        data.message
+      );
+
+      return;
+    }
+
     for (
-      const message of data.messages
+      const message of
+        data.messages || []
     ) {
       renderMessage({
-        id: message._id,
+        id: message.id,
 
         senderId:
-          message.sender,
+          message.senderId,
 
         senderUsername:
           message.senderUsername,
@@ -647,14 +725,22 @@ async function selectGroupChat() {
         message:
           message.message,
 
-        dateTime:
-          message.createdAt,
+        room:
+          message.room,
 
-        type: "group"
+        dateTime:
+          message.dateTime,
+
+        type:
+          "group"
       });
     }
+
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Group chat error:",
+      error
+    );
   }
 }
 
@@ -675,14 +761,15 @@ async function selectPrivateChat(
     .querySelectorAll(
       ".user-button"
     )
-    .forEach((button) => {
-      button.classList.toggle(
-        "active",
-
-        button.dataset.userId ===
-          String(user._id)
-      );
-    });
+    .forEach(
+      (button) => {
+        button.classList.toggle(
+          "active",
+          button.dataset.userId ===
+            String(user.id)
+        );
+      }
+    );
 
   chatTitle.textContent =
     `Private chat with ${user.username}`;
@@ -692,34 +779,43 @@ async function selectPrivateChat(
   messageContainer.innerHTML =
     "";
 
-  // Clear unread count
   clearUnread(
-    user._id
+    user.id
   );
 
   try {
     const response =
       await authFetch(
-        `/messages/private/${user._id}`
+        `/messages/private/${user.id}`
       );
 
     const data =
       await response.json();
 
+    if (!response.ok) {
+      console.error(
+        "Private messages error:",
+        data.message
+      );
+
+      return;
+    }
+
     for (
-      const message of data.messages
+      const message of
+        data.messages || []
     ) {
       renderMessage({
-        id: message._id,
+        id: message.id,
 
         senderId:
-          message.sender,
+          message.senderId,
 
         senderUsername:
           message.senderUsername,
 
         receiverId:
-          message.receiver,
+          message.receiverId,
 
         receiverUsername:
           message.receiverUsername,
@@ -728,13 +824,18 @@ async function selectPrivateChat(
           message.message,
 
         dateTime:
-          message.createdAt,
+          message.dateTime,
 
-        type: "private"
+        type:
+          "private"
       });
     }
+
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Private chat error:",
+      error
+    );
   }
 }
 
@@ -775,9 +876,10 @@ messageForm.addEventListener(
         "private-message",
         {
           receiverId:
-            selectedUser._id,
+            selectedUser.id,
 
-          message: text
+          message:
+            text
         }
       );
 
@@ -785,7 +887,7 @@ messageForm.addEventListener(
         "private-stop-typing",
         {
           receiverId:
-            selectedUser._id
+            selectedUser.id
         }
       );
     }
@@ -798,15 +900,19 @@ messageForm.addEventListener(
       socket.emit(
         "message",
         {
-          room: ROOM,
-          message: text
+          room:
+            ROOM,
+
+          message:
+            text
         }
       );
 
       socket.emit(
         "stop-typing",
         {
-          room: ROOM
+          room:
+            ROOM
         }
       );
     }
@@ -843,20 +949,23 @@ messageInput.addEventListener(
         "private-typing",
         {
           receiverId:
-            selectedUser._id
+            selectedUser.id
         }
       );
 
       typingTimer =
-        setTimeout(() => {
-          socket.emit(
-            "private-stop-typing",
-            {
-              receiverId:
-                selectedUser._id
-            }
-          );
-        }, 900);
+        setTimeout(
+          () => {
+            socket.emit(
+              "private-stop-typing",
+              {
+                receiverId:
+                  selectedUser.id
+              }
+            );
+          },
+          900
+        );
 
       return;
     }
@@ -868,19 +977,24 @@ messageInput.addEventListener(
     socket.emit(
       "typing",
       {
-        room: ROOM
+        room:
+          ROOM
       }
     );
 
     typingTimer =
-      setTimeout(() => {
-        socket.emit(
-          "stop-typing",
-          {
-            room: ROOM
-          }
-        );
-      }, 900);
+      setTimeout(
+        () => {
+          socket.emit(
+            "stop-typing",
+            {
+              room:
+                ROOM
+            }
+          );
+        },
+        900
+      );
   }
 );
 
@@ -907,7 +1021,8 @@ function showTyping(
 }
 
 function hideTyping() {
-  feedback.textContent = "";
+  feedback.textContent =
+    "";
 }
 
 // ========================================
@@ -932,7 +1047,8 @@ function clearUnread(
   const id =
     String(userId);
 
-  unreadMessages[id] = 0;
+  unreadMessages[id] =
+    0;
 
   updateUnreadUI(id);
 }
@@ -956,7 +1072,8 @@ function updateUnreadUI(
     unreadMessages[id] || 0;
 
   if (count <= 0) {
-    element.textContent = "";
+    element.textContent =
+      "";
 
     element.classList.add(
       "hidden"
@@ -971,7 +1088,9 @@ function updateUnreadUI(
 
   element.textContent =
     `${count} new message${
-      count > 1 ? "s" : ""
+      count > 1
+        ? "s"
+        : ""
     } 🔴`;
 }
 
@@ -1006,7 +1125,8 @@ function updateGroupUnreadUI() {
   }
 
   if (groupUnread <= 0) {
-    element.textContent = "";
+    element.textContent =
+      "";
 
     element.classList.add(
       "hidden"
@@ -1028,7 +1148,8 @@ function updateGroupUnreadUI() {
 }
 
 function clearGroupUnread() {
-  groupUnread = 0;
+  groupUnread =
+    0;
 
   updateGroupUnreadUI();
 }
@@ -1040,6 +1161,12 @@ function clearGroupUnread() {
 function renderMessage(
   data
 ) {
+  if (
+    !currentUser
+  ) {
+    return;
+  }
+
   const row =
     document.createElement(
       "div"
@@ -1051,7 +1178,9 @@ function renderMessage(
 
   row.className =
     `message-row ${
-      mine ? "mine" : ""
+      mine
+        ? "mine"
+        : ""
     }`;
 
   const bubble =
@@ -1130,6 +1259,10 @@ function renderMessage(
 function formatDate(
   value
 ) {
+  if (!value) {
+    return "";
+  }
+
   return new Date(
     value
   ).toLocaleString();
@@ -1144,23 +1277,28 @@ function updateOnlineIndicators(
 ) {
   const online =
     new Set(
-      userIds.map(String)
+      userIds.map(
+        String
+      )
     );
 
   document
     .querySelectorAll(
       "[data-online-for]"
     )
-    .forEach((element) => {
-      element.textContent =
-        online.has(
-          String(
-            element.dataset.onlineFor
+    .forEach(
+      (element) => {
+        element.textContent =
+          online.has(
+            String(
+              element.dataset
+                .onlineFor
+            )
           )
-        )
-          ? "🟢"
-          : "⚪";
-    });
+            ? "🟢"
+            : "⚪";
+      }
+    );
 }
 
 // ========================================
@@ -1182,6 +1320,7 @@ async function authFetch(
     API + url,
     {
       ...options,
+
       headers
     }
   );
@@ -1207,6 +1346,10 @@ function logout() {
     "chat_token"
   );
 
+  localStorage.removeItem(
+    "chat_user"
+  );
+
   token = null;
 
   currentUser = null;
@@ -1227,6 +1370,12 @@ function logout() {
   loginForm.reset();
 
   registerForm.reset();
+
+  messageContainer.innerHTML =
+    "";
+
+  usersList.innerHTML =
+    "";
 }
 
 // ========================================
@@ -1242,7 +1391,7 @@ function escapeHtml(
     );
 
   div.textContent =
-    value;
+    value ?? "";
 
   return div.innerHTML;
 }
@@ -1272,17 +1421,36 @@ if (token) {
         const data =
           await response.json();
 
-        currentUser =
-          data.user;
+        currentUser = {
+          id:
+            data.user.id,
 
-        startChat();
+          username:
+            data.user.username,
+
+          email:
+            data.user.email
+        };
+
+        await startChat();
       }
     )
-    .catch(() => {
-      localStorage.removeItem(
-        "chat_token"
-      );
+    .catch(
+      (error) => {
+        console.error(
+          "Auto login error:",
+          error
+        );
 
-      token = null;
-    });
+        localStorage.removeItem(
+          "chat_token"
+        );
+
+        localStorage.removeItem(
+          "chat_user"
+        );
+
+        token = null;
+      }
+    );
 }
