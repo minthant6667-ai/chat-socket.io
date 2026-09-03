@@ -1,32 +1,35 @@
-const jwt = require('jsonwebtoken')
+const jwt = require("jsonwebtoken");
 
-const authMiddleware = (req, res, next) => {
+function createToken(user) {
+  return jwt.sign(
+    {
+      id: user._id.toString(),
+      username: user.username,
+      email: user.email
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d"
+    }
+  );
+}
+
+function authMiddleware(req, res, next) {
   try {
-    const authHeader = req.headers.authorization
+    const header = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required',
-      })
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authentication required" });
     }
 
-    const token = authHeader.split(' ')[1]
+    const token = header.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    )
-
-    req.user = decoded
-
-    next()
+    req.user = decoded;
+    next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token',
-    })
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
 
-module.exports = authMiddleware
+module.exports = { createToken, authMiddleware };
