@@ -13,7 +13,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 const http = require("http");
 const jwt = require("jsonwebtoken");
-const { Server } = require("socket.io");
+const socketIO = require("socket.io");
 
 // ========================================
 // MODELS
@@ -42,17 +42,18 @@ const server =
 // SOCKET.IO
 // ========================================
 
-const io = new Server(server, {
+const io = socketIO(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST"]
   },
 
   transports: [
     "polling",
-    "websocket",
-  ],
+    "websocket"
+  ]
 });
+
 
 // ========================================
 // CONFIG
