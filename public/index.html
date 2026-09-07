@@ -1,275 +1,681 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
 
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
-  >
+  />
 
-  <title>iChat - MongoDB</title>
+  <meta
+    name="description"
+    content="Real-time Chat Application"
+  />
 
-  <link
-    rel="stylesheet"
-    href="style.css"
-  >
+  <title>Chat App</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* =========================
+       AUTH
+    ========================= */
+
+    #auth-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .auth-card h1 {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      text-align: center;
+      color: #64748b;
+      margin-bottom: 25px;
+    }
+
+    .auth-card h2 {
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+
+    .auth-card input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .auth-card input:focus {
+      border-color: #2563eb;
+    }
+
+    .auth-card button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+
+    .auth-card button:hover {
+      background: #1d4ed8;
+    }
+
+    .auth-divider {
+      margin: 25px 0;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    #auth-message {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    /* =========================
+       CHAT
+    ========================= */
+
+    #chat-section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      height: 65px;
+      background: #1e293b;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .chat-header h1 {
+      font-size: 21px;
+    }
+
+    #current-user {
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    #logout-btn {
+      border: none;
+      background: #ef4444;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 7px;
+      font-weight: bold;
+    }
+
+    #logout-btn:hover {
+      background: #dc2626;
+    }
+
+    /* =========================
+       SOCKET STATUS
+    ========================= */
+
+    #socket-status {
+      background: #fef2f2;
+      color: #b91c1c;
+      text-align: center;
+      padding: 7px;
+      font-size: 13px;
+      font-weight: bold;
+      border-bottom: 1px solid #fecaca;
+    }
+
+    #socket-status.connected {
+      background: #f0fdf4;
+      color: #15803d;
+      border-bottom-color: #bbf7d0;
+    }
+
+    /* =========================
+       CHAT LAYOUT
+    ========================= */
+
+    .chat-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* =========================
+       SIDEBAR
+    ========================= */
+
+    .sidebar {
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 18px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .sidebar-header h2 {
+      font-size: 17px;
+      margin-bottom: 10px;
+    }
+
+    #group-chat-btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+    }
+
+    #group-chat-btn:hover {
+      background: #1d4ed8;
+    }
+
+    #users-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .user-item {
+      padding: 13px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-item:hover {
+      background: #f8fafc;
+    }
+
+    .user-item.active {
+      background: #dbeafe;
+    }
+
+    .user-name {
+      font-weight: bold;
+    }
+
+    .online-dot {
+      width: 9px;
+      height: 9px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 7px;
+    }
+
+    .offline-dot {
+      width: 9px;
+      height: 9px;
+      background: #94a3b8;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 7px;
+    }
+
+    .unread-badge {
+      background: #ef4444;
+      color: white;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    /* =========================
+       CHAT MAIN
+    ========================= */
+
+    .chat-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: #f8fafc;
+    }
+
+    .chat-title {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chat-title h2 {
+      font-size: 18px;
+    }
+
+    #clients-total {
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    /* =========================
+       MESSAGES
+    ========================= */
+
+    #message-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .message {
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .message.mine {
+      align-self: flex-end;
+      background: #2563eb;
+      color: white;
+    }
+
+    .message.other {
+      align-self: flex-start;
+    }
+
+    .message-sender {
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      opacity: 0.75;
+    }
+
+    .message-text {
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .message-time {
+      font-size: 10px;
+      margin-top: 5px;
+      opacity: 0.6;
+      text-align: right;
+    }
+
+    /* =========================
+       TYPING
+    ========================= */
+
+    #feedback {
+      min-height: 24px;
+      padding: 0 20px;
+      color: #64748b;
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* =========================
+       MESSAGE FORM
+    ========================= */
+
+    #message-form {
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      padding: 14px;
+      display: flex;
+      gap: 10px;
+    }
+
+    #message-input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    #message-input:focus {
+      border-color: #2563eb;
+    }
+
+    #message-form button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+    }
+
+    #message-form button:hover {
+      background: #1d4ed8;
+    }
+
+    /* =========================
+       RESPONSIVE
+    ========================= */
+
+    @media (max-width: 700px) {
+      .chat-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .chat-header h1 {
+        font-size: 18px;
+      }
+
+      #current-user {
+        display: none;
+      }
+
+      .message {
+        max-width: 85%;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-  <main class="app">
+  <!-- =================================
+       AUTH SECTION
+  ================================== -->
 
-    <!-- ============================= -->
-    <!-- AUTH SECTION -->
-    <!-- ============================= -->
+  <section id="auth-section">
 
-    <section
-      id="auth-section"
-      class="card"
-    >
+    <div class="auth-card">
 
-      <h1>iChat</h1>
+      <h1>💬 Chat App</h1>
 
-      <p class="subtitle">
-        Socket.IO + MongoDB
+      <p class="auth-subtitle">
+        Real-time Socket.IO Chat
       </p>
-
-      <div class="tabs">
-
-        <button
-          id="show-login"
-          class="active"
-        >
-          Login
-        </button>
-
-        <button
-          id="show-register"
-        >
-          Register
-        </button>
-
-      </div>
 
       <!-- LOGIN -->
 
-      <form id="login-form">
+      <div id="login-container">
 
-        <label>
-          Email
-        </label>
+        <h2>Login</h2>
 
-        <input
-          id="login-email"
-          type="email"
-          required
-        >
+        <form id="login-form">
 
-        <label>
-          Password
-        </label>
+          <input
+            type="email"
+            id="login-email"
+            placeholder="Email"
+            autocomplete="email"
+            required
+          />
 
-        <input
-          id="login-password"
-          type="password"
-          required
-        >
+          <input
+            type="password"
+            id="login-password"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+          />
 
-        <button type="submit">
-          Login
-        </button>
-
-      </form>
-
-      <!-- REGISTER -->
-
-      <form
-        id="register-form"
-        class="hidden"
-      >
-
-        <label>
-          Username
-        </label>
-
-        <input
-          id="register-username"
-          minlength="3"
-          maxlength="30"
-          required
-        >
-
-        <label>
-          Email
-        </label>
-
-        <input
-          id="register-email"
-          type="email"
-          required
-        >
-
-        <label>
-          Password
-        </label>
-
-        <input
-          id="register-password"
-          type="password"
-          minlength="6"
-          required
-        >
-
-        <button type="submit">
-          Create account
-        </button>
-
-      </form>
-
-      <p
-        id="auth-message"
-        class="message"
-      ></p>
-
-    </section>
-
-
-    <!-- ============================= -->
-    <!-- CHAT SECTION -->
-    <!-- ============================= -->
-
-    <section
-      id="chat-section"
-      class="chat-layout hidden"
-    >
-
-      <!-- HEADER -->
-
-      <header class="chat-header">
-
-        <div>
-
-          <h1>
-            iChat
-          </h1>
-
-          <span id="current-user"></span>
-
-        </div>
-
-        <button
-          id="logout-button"
-          class="secondary"
-        >
-          Logout
-        </button>
-
-      </header>
-
-
-      <!-- CHAT BODY -->
-
-      <div class="chat-body">
-
-        <!-- ========================= -->
-        <!-- SIDEBAR -->
-        <!-- ========================= -->
-
-        <aside class="sidebar">
-
-          <h3>
-            Chat
-          </h3>
-
-          <button
-            id="group-chat-button"
-            class="chat-option active"
-          >
-            🌐 General Group
+          <button type="submit">
+            Login
           </button>
 
-          <h3>
-            Users
-          </h3>
-
-          <div id="users-list"></div>
-
-        </aside>
-
-
-        <!-- ========================= -->
-        <!-- CHAT PANEL -->
-        <!-- ========================= -->
-
-        <section class="chat-panel">
-
-          <div class="chat-title">
-
-            <div>
-
-              <h2 id="chat-title">
-                General Group
-              </h2>
-
-              <span id="client-total">
-                0 online
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <!-- MESSAGES -->
-
-          <div
-            id="message-container"
-            class="messages"
-          ></div>
-
-
-          <!-- TYPING -->
-
-          <p
-            id="feedback"
-            class="feedback"
-          ></p>
-
-
-          <!-- MESSAGE FORM -->
-
-          <form
-            id="message-form"
-            class="message-form"
-          >
-
-            <input
-              id="message-input"
-              autocomplete="off"
-              placeholder="Write a message..."
-              maxlength="1000"
-              required
-            >
-
-            <button type="submit">
-              Send
-            </button>
-
-          </form>
-
-        </section>
+        </form>
 
       </div>
 
-    </section>
 
-  </main>
+      <div class="auth-divider"></div>
 
+
+      <!-- REGISTER -->
+
+      <div id="register-container">
+
+        <h2>Create Account</h2>
+
+        <form id="register-form">
+
+          <input
+            type="text"
+            id="register-username"
+            placeholder="Username"
+            autocomplete="username"
+            required
+          />
+
+          <input
+            type="email"
+            id="register-email"
+            placeholder="Email"
+            autocomplete="email"
+            required
+          />
+
+          <input
+            type="password"
+            id="register-password"
+            placeholder="Password"
+            autocomplete="new-password"
+            required
+          />
+
+          <button type="submit">
+            Register
+          </button>
+
+        </form>
+
+      </div>
+
+      <p id="auth-message"></p>
+
+    </div>
+
+  </section>
+
+
+  <!-- =================================
+       CHAT SECTION
+  ================================== -->
+
+  <section id="chat-section" class="hidden">
+
+    <!-- HEADER -->
+
+    <header class="chat-header">
+
+      <div class="chat-header-left">
+
+        <h1>💬 Chat App</h1>
+
+        <span id="current-user"></span>
+
+      </div>
+
+      <button id="logout-btn" type="button">
+        Logout
+      </button>
+
+    </header>
+
+
+    <!-- SOCKET STATUS -->
+
+    <div id="socket-status">
+      Socket is not connected ❌
+    </div>
+
+
+    <!-- CHAT LAYOUT -->
+
+    <div class="chat-layout">
+
+      <!-- SIDEBAR -->
+
+      <aside class="sidebar">
+
+        <div class="sidebar-header">
+
+          <h2>Chats</h2>
+
+          <button
+            id="group-chat-btn"
+            type="button"
+          >
+            👥 General Group
+          </button>
+
+        </div>
+
+
+        <ul id="users-list">
+          <!-- Users are loaded by main.js -->
+        </ul>
+
+      </aside>
+
+
+      <!-- CHAT MAIN -->
+
+      <main class="chat-main">
+
+        <!-- CHAT TITLE -->
+
+        <div class="chat-title">
+
+          <h2 id="chat-title">
+            General Chat
+          </h2>
+
+          <span id="clients-total">
+            0 online
+          </span>
+
+        </div>
+
+
+        <!-- MESSAGES -->
+
+        <div id="message-container">
+          <!-- Messages are added by main.js -->
+        </div>
+
+
+        <!-- TYPING FEEDBACK -->
+
+        <div id="feedback"></div>
+
+
+        <!-- MESSAGE FORM -->
+
+        <form id="message-form">
+
+          <input
+            type="text"
+            id="message-input"
+            placeholder="Type a message..."
+            autocomplete="off"
+            required
+          />
+
+          <button type="submit">
+            Send
+          </button>
+
+        </form>
+
+      </main>
+
+    </div>
+
+  </section>
+
+
+  <!-- =================================
+       SOCKET.IO CLIENT
+       MUST COME BEFORE main.js
+  ================================== -->
 
   <script src="/socket.io/socket.io.js"></script>
 
-  <script src="main.js"></script>
+  <!-- =================================
+       APPLICATION JAVASCRIPT
+  ================================== -->
+
+  <script src="/main.js"></script>
 
 </body>
 </html>
