@@ -311,7 +311,7 @@ function connectSocket() {
   }
 
   socket = io(SOCKET_URL, {
-    auth: {
+    query: {
       token: token,
     },
 

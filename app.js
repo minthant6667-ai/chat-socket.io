@@ -266,6 +266,7 @@ io.use(
       );
 
       const token =
+        socket.handshake.query?.token ||
         socket.handshake.auth?.token;
 
       // ----------------------------
