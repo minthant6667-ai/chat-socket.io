@@ -212,7 +212,9 @@ if (!process.env.MONGODB_URI) {
     .connect(
       process.env.MONGODB_URI,
       {
-        serverSelectionTimeoutMS: 10000,
+        serverSelectionTimeoutMS: 15000,
+        connectTimeoutMS: 15000,
+        socketTimeoutMS: 45000,
       }
     )
     .then(() => {

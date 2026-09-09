@@ -771,7 +771,7 @@ function createUserButton(user) {
       <span
         class="online-dot"
         data-online-for="${user.id}"
-      >⚪</span>
+      ></span>
 
       <span class="username">
         ${escapeHtml(
@@ -1380,27 +1380,17 @@ function renderMessage(
     return;
   }
 
+  const mine =
+    String(data.senderId) ===
+    String(currentUser.id);
+
   const row =
     document.createElement(
       "div"
     );
 
-  const mine =
-    String(data.senderId) ===
-    String(currentUser.id);
-
   row.className =
-    `message-row ${
-      mine ? "mine" : ""
-    }`;
-
-  const bubble =
-    document.createElement(
-      "div"
-    );
-
-  bubble.className =
-    "bubble";
+    `message ${mine ? "mine" : "other"}`;
 
   const sender =
     document.createElement(
@@ -1408,7 +1398,7 @@ function renderMessage(
     );
 
   sender.className =
-    "sender";
+    "message-sender";
 
   sender.textContent =
     mine
@@ -1421,37 +1411,28 @@ function renderMessage(
       "div"
     );
 
+  text.className =
+    "message-text";
+
   text.textContent =
     data.message || "";
 
   const time =
     document.createElement(
-      "span"
+      "div"
     );
 
   time.className =
-    "time";
+    "message-time";
 
   time.textContent =
     formatDate(
       data.dateTime
     );
 
-  bubble.appendChild(
-    sender
-  );
-
-  bubble.appendChild(
-    text
-  );
-
-  bubble.appendChild(
-    time
-  );
-
-  row.appendChild(
-    bubble
-  );
+  row.appendChild(sender);
+  row.appendChild(text);
+  row.appendChild(time);
 
   messageContainer.appendChild(
     row
@@ -1504,15 +1485,13 @@ function updateOnlineIndicators(
     )
     .forEach(
       (element) => {
-        element.textContent =
-          online.has(
-            String(
-              element.dataset
-                .onlineFor
-            )
-          )
-            ? "🟢"
-            : "⚪";
+        const isOnline = online.has(
+          String(element.dataset.onlineFor)
+        );
+        element.classList.toggle(
+          "is-online",
+          isOnline
+        );
       }
     );
 }
