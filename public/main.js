@@ -1,3 +1,4 @@
+
 // ========================================
 // DOM ELEMENTS
 // ========================================
@@ -5,28 +6,43 @@
 const authSection = document.getElementById("auth-section");
 const chatSection = document.getElementById("chat-section");
 
-const showLoginButton = document.getElementById("show-login");
-const showRegisterButton = document.getElementById("show-register");
-
 const loginForm = document.getElementById("login-form");
 const registerForm = document.getElementById("register-form");
 
 const authMessage = document.getElementById("auth-message");
 
-const currentUserElement = document.getElementById("current-user");
-const logoutButton = document.getElementById("logout-button");
+const currentUserElement =
+  document.getElementById("current-user");
 
-const groupChatButton = document.getElementById("group-chat-button");
-const usersList = document.getElementById("users-list");
+const logoutButton =
+  document.getElementById("logout-btn");
 
-const chatTitle = document.getElementById("chat-title");
-const clientTotal = document.getElementById("client-total");
+const groupChatButton =
+  document.getElementById("group-chat-btn");
 
-const messageForm = document.getElementById("message-form");
-const messageInput = document.getElementById("message-input");
-const messageContainer = document.getElementById("message-container");
+const usersList =
+  document.getElementById("users-list");
 
-const feedback = document.getElementById("feedback");
+const chatTitle =
+  document.getElementById("chat-title");
+
+const clientTotal =
+  document.getElementById("clients-total");
+
+const messageForm =
+  document.getElementById("message-form");
+
+const messageInput =
+  document.getElementById("message-input");
+
+const messageContainer =
+  document.getElementById("message-container");
+
+const feedback =
+  document.getElementById("feedback");
+
+const socketStatus =
+  document.getElementById("socket-status");
 
 // ========================================
 // CONFIG
@@ -41,6 +57,7 @@ const ROOM = "general";
 // ========================================
 
 let token = localStorage.getItem("chat_token");
+
 let currentUser = null;
 let selectedUser = null;
 let socket = null;
@@ -54,99 +71,138 @@ const unreadMessages = {};
 let groupUnread = 0;
 
 // ========================================
-// LOGIN / REGISTER TABS
+// SAFE DOM CHECK
 // ========================================
 
-showLoginButton.addEventListener("click", () => {
-  showLoginButton.classList.add("active");
-  showRegisterButton.classList.remove("active");
-
-  loginForm.classList.remove("hidden");
-  registerForm.classList.add("hidden");
-
-  authMessage.textContent = "";
-});
-
-showRegisterButton.addEventListener("click", () => {
-  showRegisterButton.classList.add("active");
-  showLoginButton.classList.remove("active");
-
-  registerForm.classList.remove("hidden");
-  loginForm.classList.add("hidden");
-
-  authMessage.textContent = "";
+console.log("DOM check:", {
+  authSection: !!authSection,
+  chatSection: !!chatSection,
+  loginForm: !!loginForm,
+  registerForm: !!registerForm,
+  authMessage: !!authMessage,
+  currentUserElement: !!currentUserElement,
+  logoutButton: !!logoutButton,
+  groupChatButton: !!groupChatButton,
+  usersList: !!usersList,
+  chatTitle: !!chatTitle,
+  clientTotal: !!clientTotal,
+  messageForm: !!messageForm,
+  messageInput: !!messageInput,
+  messageContainer: !!messageContainer,
+  feedback: !!feedback,
+  socketStatus: !!socketStatus
 });
 
 // ========================================
 // REGISTER
 // ========================================
 
-registerForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (registerForm) {
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  const body = {
-    username: document
-      .getElementById("register-username")
-      .value
-      .trim(),
+    const usernameInput =
+      document.getElementById("register-username");
 
-    email: document
-      .getElementById("register-email")
-      .value
-      .trim(),
+    const emailInput =
+      document.getElementById("register-email");
 
-    password: document
-      .getElementById("register-password")
-      .value,
-  };
+    const passwordInput =
+      document.getElementById("register-password");
 
-  await authenticate("/auth/register", body);
-});
+    if (
+      !usernameInput ||
+      !emailInput ||
+      !passwordInput
+    ) {
+      console.error(
+        "Register input elements are missing"
+      );
+
+      return;
+    }
+
+    const body = {
+      username: usernameInput.value.trim(),
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+    };
+
+    await authenticate(
+      "/auth/register",
+      body
+    );
+  });
+}
 
 // ========================================
 // LOGIN
 // ========================================
 
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (loginForm) {
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  const body = {
-    email: document
-      .getElementById("login-email")
-      .value
-      .trim(),
+    const emailInput =
+      document.getElementById("login-email");
 
-    password: document
-      .getElementById("login-password")
-      .value,
-  };
+    const passwordInput =
+      document.getElementById("login-password");
 
-  await authenticate("/auth/login", body);
-});
+    if (
+      !emailInput ||
+      !passwordInput
+    ) {
+      console.error(
+        "Login input elements are missing"
+      );
+
+      return;
+    }
+
+    const body = {
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+    };
+
+    await authenticate(
+      "/auth/login",
+      body
+    );
+  });
+}
 
 // ========================================
 // AUTHENTICATE
 // ========================================
 
 async function authenticate(endpoint, body) {
+  if (!authMessage) {
+    return;
+  }
+
   authMessage.textContent = "Please wait...";
 
   try {
-    const response = await fetch(API + endpoint, {
-      method: "POST",
+    const response = await fetch(
+      API + endpoint,
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
-      },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-      body: JSON.stringify(body),
-    });
+        body: JSON.stringify(body),
+      }
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
       authMessage.textContent =
-        data.message || "Authentication failed";
+        data.message ||
+        "Authentication failed";
 
       return;
     }
@@ -166,12 +222,17 @@ async function authenticate(endpoint, body) {
       email: data.user.email,
     };
 
-    localStorage.setItem("chat_token", token);
+    localStorage.setItem(
+      "chat_token",
+      token
+    );
 
     localStorage.setItem(
       "chat_user",
       JSON.stringify(currentUser)
     );
+
+    authMessage.textContent = "";
 
     await startChat();
 
@@ -199,18 +260,23 @@ async function startChat() {
     return;
   }
 
-  authSection.classList.add("hidden");
-  chatSection.classList.remove("hidden");
+  if (authSection) {
+    authSection.classList.add("hidden");
+  }
 
-  currentUserElement.textContent =
-    `${currentUser.username} (${currentUser.email})`;
+  if (chatSection) {
+    chatSection.classList.remove("hidden");
+  }
 
-  // IMPORTANT:
-  // Connect Socket.IO immediately.
+  if (currentUserElement) {
+    currentUserElement.textContent =
+      `${currentUser.username} (${currentUser.email})`;
+  }
+
   connectSocket();
 
-  // Load users and messages
   await loadUsers();
+
   await selectGroupChat();
 }
 
@@ -219,7 +285,6 @@ async function startChat() {
 // ========================================
 
 function connectSocket() {
-  // Disconnect old socket
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();
@@ -232,13 +297,28 @@ function connectSocket() {
   console.log("Token exists:", !!token);
   console.log("================================");
 
-  // Connect explicitly to the same server
+  if (typeof io !== "function") {
+    console.error(
+      "Socket.IO client is not loaded."
+    );
+
+    if (socketStatus) {
+      socketStatus.textContent =
+        "Socket.IO client not loaded ❌";
+    }
+
+    return;
+  }
+
   socket = io(SOCKET_URL, {
     auth: {
       token: token,
     },
 
-    transports: ["polling", "websocket"],
+    transports: [
+      "polling",
+      "websocket",
+    ],
 
     reconnection: true,
     reconnectionAttempts: 10,
@@ -256,236 +336,361 @@ function connectSocket() {
     console.log("Connected:", socket.connected);
     console.log("================================");
 
-    feedback.textContent = "";
+    if (socketStatus) {
+      socketStatus.textContent =
+        "Socket connected ✅";
 
-    // Join general room
-    socket.emit("join-room", ROOM);
+      socketStatus.classList.add(
+        "connected"
+      );
+    }
 
-    console.log("Joined room:", ROOM);
+    hideTyping();
+
+    socket.emit(
+      "join-room",
+      ROOM
+    );
+
+    console.log(
+      "Joined room:",
+      ROOM
+    );
   });
 
   // ======================================
   // CONNECTION ERROR
   // ======================================
 
-  socket.on("connect_error", (error) => {
-    console.error("================================");
-    console.error("❌ Socket.IO connection error");
-    console.error("Message:", error.message);
-    console.error("Error:", error);
-    console.error("================================");
-
-    feedback.textContent =
-      `Socket error: ${error.message}`;
-
-    if (
-      error.message.includes("Invalid") ||
-      error.message.includes("expired") ||
-      error.message.includes("Authentication") ||
-      error.message.includes("required")
-    ) {
+  socket.on(
+    "connect_error",
+    (error) => {
       console.error(
-        "JWT authentication failed."
+        "================================"
       );
+
+      console.error(
+        "❌ Socket.IO connection error"
+      );
+
+      console.error(
+        "Message:",
+        error.message
+      );
+
+      console.error(
+        "Error:",
+        error
+      );
+
+      console.error(
+        "================================"
+      );
+
+      if (socketStatus) {
+        socketStatus.textContent =
+          `Socket error: ${error.message}`;
+
+        socketStatus.classList.remove(
+          "connected"
+        );
+      }
+
+      if (feedback) {
+        feedback.textContent =
+          `Socket error: ${error.message}`;
+      }
     }
-  });
+  );
 
   // ======================================
   // DISCONNECTED
   // ======================================
 
-  socket.on("disconnect", (reason) => {
-    console.log(
-      "❌ Socket disconnected:",
-      reason
-    );
+  socket.on(
+    "disconnect",
+    (reason) => {
+      console.log(
+        "❌ Socket disconnected:",
+        reason
+      );
 
-    clientTotal.textContent = "0 online";
+      if (clientTotal) {
+        clientTotal.textContent =
+          "0 online";
+      }
 
-    if (reason !== "io client disconnect") {
-      feedback.textContent =
-        "Socket disconnected ❌ Reconnecting...";
+      if (socketStatus) {
+        socketStatus.textContent =
+          "Socket is not connected ❌";
+
+        socketStatus.classList.remove(
+          "connected"
+        );
+      }
+
+      if (
+        reason !==
+        "io client disconnect"
+      ) {
+        if (feedback) {
+          feedback.textContent =
+            "Socket disconnected ❌ Reconnecting...";
+        }
+      }
     }
-  });
+  );
 
   // ======================================
-  // RECONNECTING
+  // RECONNECT
   // ======================================
 
-  socket.io.on("reconnect_attempt", (attempt) => {
-    console.log(
-      `🔄 Socket reconnect attempt: ${attempt}`
-    );
-  });
+  socket.io.on(
+    "reconnect_attempt",
+    (attempt) => {
+      console.log(
+        `🔄 Socket reconnect attempt: ${attempt}`
+      );
+    }
+  );
 
-  socket.io.on("reconnect", (attempt) => {
-    console.log(
-      `✅ Socket reconnected after ${attempt} attempt(s)`
-    );
-  });
+  socket.io.on(
+    "reconnect",
+    (attempt) => {
+      console.log(
+        `✅ Socket reconnected after ${attempt} attempt(s)`
+      );
+    }
+  );
 
   // ======================================
   // CURRENT USER
   // ======================================
 
-  socket.on("current-user", (user) => {
-    console.log("Current user:", user);
+  socket.on(
+    "current-user",
+    (user) => {
+      console.log(
+        "Current user:",
+        user
+      );
 
-    currentUser = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-    };
+      if (!user) {
+        return;
+      }
 
-    localStorage.setItem(
-      "chat_user",
-      JSON.stringify(currentUser)
-    );
+      currentUser = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      };
 
-    currentUserElement.textContent =
-      `${user.username} (${user.email})`;
-  });
+      localStorage.setItem(
+        "chat_user",
+        JSON.stringify(currentUser)
+      );
+
+      if (currentUserElement) {
+        currentUserElement.textContent =
+          `${user.username} (${user.email})`;
+      }
+    }
+  );
 
   // ======================================
   // ONLINE USERS
   // ======================================
 
-  socket.on("online-users", (userIds) => {
-    console.log(
-      "Online users:",
-      userIds
-    );
+  socket.on(
+    "online-users",
+    (userIds) => {
+      console.log(
+        "Online users:",
+        userIds
+      );
 
-    clientTotal.textContent =
-      `${userIds.length} online`;
+      if (!Array.isArray(userIds)) {
+        return;
+      }
 
-    updateOnlineIndicators(userIds);
-  });
+      if (clientTotal) {
+        clientTotal.textContent =
+          `${userIds.length} online`;
+      }
+
+      updateOnlineIndicators(
+        userIds
+      );
+    }
+  );
 
   // ======================================
   // GROUP MESSAGE
   // ======================================
 
-  socket.on("message", (data) => {
-    console.log(
-      "📨 Group message received:",
-      data
-    );
+  socket.on(
+    "message",
+    (data) => {
+      console.log(
+        "📨 Group message received:",
+        data
+      );
 
-    if (
-      selectedUser === null &&
-      data.room === ROOM
-    ) {
-      renderMessage(data);
-      return;
-    }
+      if (
+        selectedUser === null &&
+        data.room === ROOM
+      ) {
+        renderMessage(data);
+        return;
+      }
 
-    if (data.room === ROOM) {
-      increaseGroupUnread();
+      if (data.room === ROOM) {
+        increaseGroupUnread();
+      }
     }
-  });
+  );
 
   // ======================================
   // PRIVATE MESSAGE
   // ======================================
 
-  socket.on("private-message", (data) => {
-    console.log(
-      "📨 Private message received:",
-      data
-    );
+  socket.on(
+    "private-message",
+    (data) => {
+      console.log(
+        "📨 Private message received:",
+        data
+      );
 
-    const senderId = String(data.senderId);
-    const myId = String(currentUser.id);
+      if (!currentUser) {
+        return;
+      }
 
-    // ====================================
-    // MY OWN MESSAGE
-    // ====================================
+      const senderId =
+        String(data.senderId);
 
-    if (senderId === myId) {
+      const myId =
+        String(currentUser.id);
+
+      // ====================================
+      // MY OWN MESSAGE
+      // ====================================
+
+      if (senderId === myId) {
+        if (
+          selectedUser &&
+          String(selectedUser.id) ===
+            String(data.receiverId)
+        ) {
+          renderMessage(data);
+        }
+
+        return;
+      }
+
+      // ====================================
+      // OPEN PRIVATE CHAT
+      // ====================================
+
       if (
         selectedUser &&
         String(selectedUser.id) ===
-          String(data.receiverId)
+          senderId
       ) {
         renderMessage(data);
+        return;
       }
 
-      return;
+      // ====================================
+      // PRIVATE CHAT NOT OPEN
+      // ====================================
+
+      increaseUnread(
+        senderId
+      );
     }
-
-    // ====================================
-    // OPEN PRIVATE CHAT
-    // ====================================
-
-    if (
-      selectedUser &&
-      String(selectedUser.id) === senderId
-    ) {
-      renderMessage(data);
-      return;
-    }
-
-    // ====================================
-    // PRIVATE CHAT NOT OPEN
-    // ====================================
-
-    increaseUnread(senderId);
-  });
+  );
 
   // ======================================
   // GROUP TYPING
   // ======================================
 
-  socket.on("typing", (data) => {
-    if (selectedUser === null) {
-      showTyping(data.username);
+  socket.on(
+    "typing",
+    (data) => {
+      if (
+        selectedUser === null &&
+        data
+      ) {
+        showTyping(
+          data.username
+        );
+      }
     }
-  });
+  );
 
-  socket.on("stop-typing", () => {
-    if (selectedUser === null) {
-      hideTyping();
+  socket.on(
+    "stop-typing",
+    () => {
+      if (
+        selectedUser === null
+      ) {
+        hideTyping();
+      }
     }
-  });
+  );
 
   // ======================================
   // PRIVATE TYPING
   // ======================================
 
-  socket.on("private-typing", (data) => {
-    if (
-      selectedUser &&
-      String(selectedUser.id) ===
-        String(data.senderId)
-    ) {
-      showTyping(data.username);
+  socket.on(
+    "private-typing",
+    (data) => {
+      if (
+        selectedUser &&
+        String(selectedUser.id) ===
+          String(data.senderId)
+      ) {
+        showTyping(
+          data.username
+        );
+      }
     }
-  });
+  );
 
-  socket.on("private-stop-typing", (data) => {
-    if (
-      selectedUser &&
-      String(selectedUser.id) ===
-        String(data.senderId)
-    ) {
-      hideTyping();
+  socket.on(
+    "private-stop-typing",
+    (data) => {
+      if (
+        selectedUser &&
+        String(selectedUser.id) ===
+          String(data.senderId)
+      ) {
+        hideTyping();
+      }
     }
-  });
+  );
 
   // ======================================
   // CHAT ERROR
   // ======================================
 
-  socket.on("chat-error", (data) => {
-    console.error(
-      "❌ Chat error:",
-      data
-    );
+  socket.on(
+    "chat-error",
+    (data) => {
+      console.error(
+        "❌ Chat error:",
+        data
+      );
 
-    feedback.textContent =
-      data.message || "Chat error";
-  });
+      if (feedback) {
+        feedback.textContent =
+          data?.message ||
+          "Chat error";
+      }
+    }
+  );
 }
 
 // ========================================
@@ -493,12 +698,18 @@ function connectSocket() {
 // ========================================
 
 async function loadUsers() {
-  try {
-    const response = await authFetch(
-      "/messages/users"
-    );
+  if (!usersList || !currentUser) {
+    return;
+  }
 
-    const data = await response.json();
+  try {
+    const response =
+      await authFetch(
+        "/messages/users"
+      );
+
+    const data =
+      await response.json();
 
     if (!response.ok) {
       console.error(
@@ -511,7 +722,10 @@ async function loadUsers() {
 
     usersList.innerHTML = "";
 
-    for (const user of data.users || []) {
+    for (
+      const user of
+      data.users || []
+    ) {
       if (
         String(user.id) ===
         String(currentUser.id)
@@ -535,10 +749,18 @@ async function loadUsers() {
 // ========================================
 
 function createUserButton(user) {
-  const button =
-    document.createElement("button");
+  if (!usersList) {
+    return;
+  }
 
-  button.className = "user-button";
+  const button =
+    document.createElement(
+      "button"
+    );
+
+  button.type = "button";
+  button.className =
+    "user-button";
 
   button.dataset.userId =
     String(user.id);
@@ -552,7 +774,9 @@ function createUserButton(user) {
       >⚪</span>
 
       <span class="username">
-        ${escapeHtml(user.username)}
+        ${escapeHtml(
+          user.username
+        )}
       </span>
 
     </div>
@@ -570,7 +794,9 @@ function createUserButton(user) {
     }
   );
 
-  usersList.appendChild(button);
+  usersList.appendChild(
+    button
+  );
 }
 
 // ========================================
@@ -582,29 +808,43 @@ async function selectGroupChat() {
 
   clearGroupUnread();
 
-  groupChatButton.classList.add("active");
+  if (groupChatButton) {
+    groupChatButton.classList.add(
+      "active"
+    );
+  }
 
   document
-    .querySelectorAll(".user-button")
+    .querySelectorAll(
+      ".user-button"
+    )
     .forEach((button) => {
-      button.classList.remove("active");
+      button.classList.remove(
+        "active"
+      );
     });
 
-  chatTitle.textContent =
-    "General Group";
+  if (chatTitle) {
+    chatTitle.textContent =
+      "General Group";
+  }
 
   hideTyping();
 
-  messageContainer.innerHTML = "";
+  if (messageContainer) {
+    messageContainer.innerHTML = "";
+  }
 
   try {
-    const response = await authFetch(
-      `/messages/group?room=${encodeURIComponent(
-        ROOM
-      )}`
-    );
+    const response =
+      await authFetch(
+        `/messages/group?room=${encodeURIComponent(
+          ROOM
+        )}`
+      );
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     if (!response.ok) {
       console.error(
@@ -615,15 +855,22 @@ async function selectGroupChat() {
       return;
     }
 
-    for (const message of data.messages || []) {
+    for (
+      const message of
+      data.messages || []
+    ) {
       renderMessage({
         id: message.id,
-        senderId: message.senderId,
+        senderId:
+          message.senderId,
         senderUsername:
           message.senderUsername,
-        message: message.message,
-        room: message.room,
-        dateTime: message.dateTime,
+        message:
+          message.message,
+        room:
+          message.room,
+        dateTime:
+          message.dateTime,
         type: "group",
       });
     }
@@ -640,15 +887,21 @@ async function selectGroupChat() {
 // PRIVATE CHAT
 // ========================================
 
-async function selectPrivateChat(user) {
+async function selectPrivateChat(
+  user
+) {
   selectedUser = user;
 
-  groupChatButton.classList.remove(
-    "active"
-  );
+  if (groupChatButton) {
+    groupChatButton.classList.remove(
+      "active"
+    );
+  }
 
   document
-    .querySelectorAll(".user-button")
+    .querySelectorAll(
+      ".user-button"
+    )
     .forEach((button) => {
       button.classList.toggle(
         "active",
@@ -657,21 +910,29 @@ async function selectPrivateChat(user) {
       );
     });
 
-  chatTitle.textContent =
-    `Private chat with ${user.username}`;
+  if (chatTitle) {
+    chatTitle.textContent =
+      `Private chat with ${user.username}`;
+  }
 
   hideTyping();
 
-  messageContainer.innerHTML = "";
+  if (messageContainer) {
+    messageContainer.innerHTML = "";
+  }
 
-  clearUnread(user.id);
+  clearUnread(
+    user.id
+  );
 
   try {
-    const response = await authFetch(
-      `/messages/private/${user.id}`
-    );
+    const response =
+      await authFetch(
+        `/messages/private/${user.id}`
+      );
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     if (!response.ok) {
       console.error(
@@ -682,18 +943,24 @@ async function selectPrivateChat(user) {
       return;
     }
 
-    for (const message of data.messages || []) {
+    for (
+      const message of
+      data.messages || []
+    ) {
       renderMessage({
         id: message.id,
-        senderId: message.senderId,
+        senderId:
+          message.senderId,
         senderUsername:
           message.senderUsername,
         receiverId:
           message.receiverId,
         receiverUsername:
           message.receiverUsername,
-        message: message.message,
-        dateTime: message.dateTime,
+        message:
+          message.message,
+        dateTime:
+          message.dateTime,
         type: "private",
       });
     }
@@ -710,211 +977,254 @@ async function selectPrivateChat(user) {
 // GROUP BUTTON
 // ========================================
 
-groupChatButton.addEventListener(
-  "click",
-  selectGroupChat
-);
+if (groupChatButton) {
+  groupChatButton.addEventListener(
+    "click",
+    selectGroupChat
+  );
+}
 
 // ========================================
 // SEND MESSAGE
 // ========================================
 
-messageForm.addEventListener(
-  "submit",
-  (event) => {
-    event.preventDefault();
+if (messageForm) {
+  messageForm.addEventListener(
+    "submit",
+    (event) => {
+      event.preventDefault();
 
-    console.log("================================");
-    console.log("🖱️ SEND BUTTON CLICKED");
-
-    const text =
-      messageInput.value.trim();
-
-    console.log("Message:", text);
-    console.log("Socket:", socket);
-    console.log(
-      "Socket connected:",
-      socket?.connected
-    );
-    console.log(
-      "Selected user:",
-      selectedUser
-    );
-    console.log("================================");
-
-    // Empty message
-    if (!text) {
-      return;
-    }
-
-    // Socket not connected
-    if (!socket || !socket.connected) {
-      console.error(
-        "❌ Socket is NOT connected"
-      );
-
-      feedback.textContent =
-        "Socket is not connected ❌";
-
-      return;
-    }
-
-    // ====================================
-    // PRIVATE MESSAGE
-    // ====================================
-
-    if (selectedUser) {
       console.log(
-        "📤 Sending private message"
+        "================================"
       );
 
       console.log(
-        "Receiver ID:",
-        selectedUser.id
+        "🖱️ SEND BUTTON CLICKED"
       );
 
-      socket.emit(
-        "private-message",
-        {
-          receiverId:
-            selectedUser.id,
+      const text =
+        messageInput?.value.trim();
 
-          message:
-            text,
-        }
-      );
-
-      socket.emit(
-        "private-stop-typing",
-        {
-          receiverId:
-            selectedUser.id,
-        }
-      );
-    }
-
-    // ====================================
-    // GROUP MESSAGE
-    // ====================================
-
-    else {
       console.log(
-        "📤 Sending group message"
+        "Message:",
+        text
       );
 
       console.log(
-        "Room:",
-        ROOM
+        "Socket:",
+        socket
       );
 
-      socket.emit(
-        "message",
-        {
-          room: ROOM,
-          message: text,
-        }
+      console.log(
+        "Socket connected:",
+        socket?.connected
       );
 
-      socket.emit(
-        "stop-typing",
-        {
-          room: ROOM,
-        }
+      console.log(
+        "Selected user:",
+        selectedUser
       );
+
+      console.log(
+        "================================"
+      );
+
+      if (!text) {
+        return;
+      }
+
+      if (
+        !socket ||
+        !socket.connected
+      ) {
+        console.error(
+          "❌ Socket is NOT connected"
+        );
+
+        if (feedback) {
+          feedback.textContent =
+            "Socket is not connected ❌";
+        }
+
+        return;
+      }
+
+      // ====================================
+      // PRIVATE MESSAGE
+      // ====================================
+
+      if (selectedUser) {
+        console.log(
+          "📤 Sending private message"
+        );
+
+        console.log(
+          "Receiver ID:",
+          selectedUser.id
+        );
+
+        socket.emit(
+          "private-message",
+          {
+            receiverId:
+              selectedUser.id,
+
+            message:
+              text,
+          }
+        );
+
+        socket.emit(
+          "private-stop-typing",
+          {
+            receiverId:
+              selectedUser.id,
+          }
+        );
+      }
+
+      // ====================================
+      // GROUP MESSAGE
+      // ====================================
+
+      else {
+        console.log(
+          "📤 Sending group message"
+        );
+
+        console.log(
+          "Room:",
+          ROOM
+        );
+
+        socket.emit(
+          "message",
+          {
+            room: ROOM,
+            message: text,
+          }
+        );
+
+        socket.emit(
+          "stop-typing",
+          {
+            room: ROOM,
+          }
+        );
+      }
+
+      if (messageInput) {
+        messageInput.value = "";
+      }
+
+      hideTyping();
     }
-
-    messageInput.value = "";
-
-    hideTyping();
-  }
-);
+  );
+}
 
 // ========================================
 // TYPING
 // ========================================
 
-messageInput.addEventListener(
-  "input",
-  () => {
-    if (!socket || !socket.connected) {
-      return;
-    }
-
-    clearTimeout(typingTimer);
-
-    // ====================================
-    // PRIVATE TYPING
-    // ====================================
-
-    if (selectedUser) {
-      socket.emit(
-        "private-typing",
-        {
-          receiverId:
-            selectedUser.id,
-        }
-      );
-
-      typingTimer = setTimeout(
-        () => {
-          if (
-            socket &&
-            socket.connected &&
-            selectedUser
-          ) {
-            socket.emit(
-              "private-stop-typing",
-              {
-                receiverId:
-                  selectedUser.id,
-              }
-            );
-          }
-        },
-        900
-      );
-
-      return;
-    }
-
-    // ====================================
-    // GROUP TYPING
-    // ====================================
-
-    socket.emit(
-      "typing",
-      {
-        room: ROOM,
+if (messageInput) {
+  messageInput.addEventListener(
+    "input",
+    () => {
+      if (
+        !socket ||
+        !socket.connected
+      ) {
+        return;
       }
-    );
 
-    typingTimer = setTimeout(
-      () => {
-        if (
-          socket &&
-          socket.connected
-        ) {
-          socket.emit(
-            "stop-typing",
-            {
-              room: ROOM,
-            }
+      clearTimeout(
+        typingTimer
+      );
+
+      // ==================================
+      // PRIVATE TYPING
+      // ==================================
+
+      if (selectedUser) {
+        socket.emit(
+          "private-typing",
+          {
+            receiverId:
+              selectedUser.id,
+          }
+        );
+
+        typingTimer =
+          setTimeout(
+            () => {
+              if (
+                socket &&
+                socket.connected &&
+                selectedUser
+              ) {
+                socket.emit(
+                  "private-stop-typing",
+                  {
+                    receiverId:
+                      selectedUser.id,
+                  }
+                );
+              }
+            },
+            900
           );
+
+        return;
+      }
+
+      // ==================================
+      // GROUP TYPING
+      // ==================================
+
+      socket.emit(
+        "typing",
+        {
+          room: ROOM,
         }
-      },
-      900
-    );
-  }
-);
+      );
+
+      typingTimer =
+        setTimeout(
+          () => {
+            if (
+              socket &&
+              socket.connected
+            ) {
+              socket.emit(
+                "stop-typing",
+                {
+                  room: ROOM,
+                }
+              );
+            }
+          },
+          900
+        );
+    }
+  );
+}
 
 // ========================================
 // TYPING UI
 // ========================================
 
-function showTyping(username) {
+function showTyping(
+  username
+) {
+  if (!feedback) {
+    return;
+  }
+
   feedback.innerHTML = `
     <span class="typing-text">
-      ${escapeHtml(username)}
+      ${escapeHtml(
+        username
+      )}
       is typing...
       <span class="typing-dots">
         <span></span>
@@ -926,15 +1236,20 @@ function showTyping(username) {
 }
 
 function hideTyping() {
-  feedback.textContent = "";
+  if (feedback) {
+    feedback.textContent = "";
+  }
 }
 
 // ========================================
 // PRIVATE UNREAD
 // ========================================
 
-function increaseUnread(userId) {
-  const id = String(userId);
+function increaseUnread(
+  userId
+) {
+  const id =
+    String(userId);
 
   unreadMessages[id] =
     (unreadMessages[id] || 0) + 1;
@@ -942,16 +1257,22 @@ function increaseUnread(userId) {
   updateUnreadUI(id);
 }
 
-function clearUnread(userId) {
-  const id = String(userId);
+function clearUnread(
+  userId
+) {
+  const id =
+    String(userId);
 
   unreadMessages[id] = 0;
 
   updateUnreadUI(id);
 }
 
-function updateUnreadUI(userId) {
-  const id = String(userId);
+function updateUnreadUI(
+  userId
+) {
+  const id =
+    String(userId);
 
   const element =
     document.querySelector(
@@ -967,12 +1288,17 @@ function updateUnreadUI(userId) {
 
   if (count <= 0) {
     element.textContent = "";
-    element.classList.add("hidden");
+
+    element.classList.add(
+      "hidden"
+    );
 
     return;
   }
 
-  element.classList.remove("hidden");
+  element.classList.remove(
+    "hidden"
+  );
 
   element.textContent =
     `${count} new message${
@@ -991,6 +1317,10 @@ function increaseGroupUnread() {
 }
 
 function updateGroupUnreadUI() {
+  if (!groupChatButton) {
+    return;
+  }
+
   let element =
     document.getElementById(
       "group-unread"
@@ -998,9 +1328,12 @@ function updateGroupUnreadUI() {
 
   if (!element) {
     element =
-      document.createElement("span");
+      document.createElement(
+        "span"
+      );
 
-    element.id = "group-unread";
+    element.id =
+      "group-unread";
 
     groupChatButton.appendChild(
       element
@@ -1010,12 +1343,16 @@ function updateGroupUnreadUI() {
   if (groupUnread <= 0) {
     element.textContent = "";
 
-    element.classList.add("hidden");
+    element.classList.add(
+      "hidden"
+    );
 
     return;
   }
 
-  element.classList.remove("hidden");
+  element.classList.remove(
+    "hidden"
+  );
 
   element.textContent =
     ` ${groupUnread} new message${
@@ -1033,13 +1370,20 @@ function clearGroupUnread() {
 // RENDER MESSAGE
 // ========================================
 
-function renderMessage(data) {
-  if (!currentUser) {
+function renderMessage(
+  data
+) {
+  if (
+    !currentUser ||
+    !messageContainer
+  ) {
     return;
   }
 
   const row =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   const mine =
     String(data.senderId) ===
@@ -1051,43 +1395,67 @@ function renderMessage(data) {
     }`;
 
   const bubble =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
-  bubble.className = "bubble";
+  bubble.className =
+    "bubble";
 
   const sender =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
-  sender.className = "sender";
+  sender.className =
+    "sender";
 
   sender.textContent =
     mine
       ? "You"
-      : data.senderUsername || "User";
+      : data.senderUsername ||
+        "User";
 
   const text =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   text.textContent =
-    data.message;
+    data.message || "";
 
   const time =
-    document.createElement("span");
+    document.createElement(
+      "span"
+    );
 
-  time.className = "time";
+  time.className =
+    "time";
 
   time.textContent =
     formatDate(
       data.dateTime
     );
 
-  bubble.appendChild(sender);
-  bubble.appendChild(text);
-  bubble.appendChild(time);
+  bubble.appendChild(
+    sender
+  );
 
-  row.appendChild(bubble);
+  bubble.appendChild(
+    text
+  );
 
-  messageContainer.appendChild(row);
+  bubble.appendChild(
+    time
+  );
+
+  row.appendChild(
+    bubble
+  );
+
+  messageContainer.appendChild(
+    row
+  );
 
   messageContainer.scrollTop =
     messageContainer.scrollHeight;
@@ -1097,14 +1465,21 @@ function renderMessage(data) {
 // DATE
 // ========================================
 
-function formatDate(value) {
+function formatDate(
+  value
+) {
   if (!value) {
     return "";
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
@@ -1115,7 +1490,9 @@ function formatDate(value) {
 // ONLINE INDICATORS
 // ========================================
 
-function updateOnlineIndicators(userIds) {
+function updateOnlineIndicators(
+  userIds
+) {
   const online =
     new Set(
       userIds.map(String)
@@ -1125,16 +1502,19 @@ function updateOnlineIndicators(userIds) {
     .querySelectorAll(
       "[data-online-for]"
     )
-    .forEach((element) => {
-      element.textContent =
-        online.has(
-          String(
-            element.dataset.onlineFor
+    .forEach(
+      (element) => {
+        element.textContent =
+          online.has(
+            String(
+              element.dataset
+                .onlineFor
+            )
           )
-        )
-          ? "🟢"
-          : "⚪";
-    });
+            ? "🟢"
+            : "⚪";
+      }
+    );
 }
 
 // ========================================
@@ -1162,7 +1542,6 @@ async function authFetch(
     API + url,
     {
       ...options,
-
       headers,
     }
   );
@@ -1172,10 +1551,12 @@ async function authFetch(
 // LOGOUT
 // ========================================
 
-logoutButton.addEventListener(
-  "click",
-  logout
-);
+if (logoutButton) {
+  logoutButton.addEventListener(
+    "click",
+    logout
+  );
+}
 
 function logout() {
   if (socket) {
@@ -1184,7 +1565,9 @@ function logout() {
     socket = null;
   }
 
-  clearTimeout(typingTimer);
+  clearTimeout(
+    typingTimer
+  );
 
   localStorage.removeItem(
     "chat_token"
@@ -1198,32 +1581,61 @@ function logout() {
   currentUser = null;
   selectedUser = null;
 
-  authSection.classList.remove(
-    "hidden"
-  );
+  if (authSection) {
+    authSection.classList.remove(
+      "hidden"
+    );
+  }
 
-  chatSection.classList.add(
-    "hidden"
-  );
+  if (chatSection) {
+    chatSection.classList.add(
+      "hidden"
+    );
+  }
 
-  authMessage.textContent = "";
+  if (authMessage) {
+    authMessage.textContent = "";
+  }
 
-  loginForm.reset();
-  registerForm.reset();
+  if (loginForm) {
+    loginForm.reset();
+  }
 
-  messageContainer.innerHTML = "";
-  usersList.innerHTML = "";
+  if (registerForm) {
+    registerForm.reset();
+  }
 
-  clientTotal.textContent =
-    "0 online";
+  if (messageContainer) {
+    messageContainer.innerHTML = "";
+  }
+
+  if (usersList) {
+    usersList.innerHTML = "";
+  }
+
+  if (clientTotal) {
+    clientTotal.textContent =
+      "0 online";
+  }
+
+  if (socketStatus) {
+    socketStatus.textContent =
+      "Socket is not connected ❌";
+
+    socketStatus.classList.remove(
+      "connected"
+    );
+  }
 
   groupUnread = 0;
 
   Object.keys(
     unreadMessages
-  ).forEach((key) => {
-    delete unreadMessages[key];
-  });
+  ).forEach(
+    (key) => {
+      delete unreadMessages[key];
+    }
+  );
 
   hideTyping();
 }
@@ -1232,9 +1644,13 @@ function logout() {
 // ESCAPE HTML
 // ========================================
 
-function escapeHtml(value) {
+function escapeHtml(
+  value
+) {
   const div =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   div.textContent =
     value ?? "";
@@ -1276,17 +1692,30 @@ async function autoLogin() {
     const data =
       await response.json();
 
+    if (
+      !data.user
+    ) {
+      throw new Error(
+        "Invalid user response"
+      );
+    }
+
     currentUser = {
-      id: data.user.id,
+      id:
+        data.user.id,
+
       username:
         data.user.username,
+
       email:
         data.user.email,
     };
 
     localStorage.setItem(
       "chat_user",
-      JSON.stringify(currentUser)
+      JSON.stringify(
+        currentUser
+      )
     );
 
     console.log(
@@ -1313,16 +1742,22 @@ async function autoLogin() {
     token = null;
     currentUser = null;
 
-    authSection.classList.remove(
-      "hidden"
-    );
+    if (authSection) {
+      authSection.classList.remove(
+        "hidden"
+      );
+    }
 
-    chatSection.classList.add(
-      "hidden"
-    );
+    if (chatSection) {
+      chatSection.classList.add(
+        "hidden"
+      );
+    }
 
-    authMessage.textContent =
-      "Please login again.";
+    if (authMessage) {
+      authMessage.textContent =
+        "Please login again.";
+    }
   }
 }
 
@@ -1331,3 +1766,4 @@ async function autoLogin() {
 // ========================================
 
 autoLogin();
+
