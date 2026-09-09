@@ -1,4 +1,16 @@
 // ========================================
+// CRASH GUARD — keep process alive on unhandled errors
+// ========================================
+
+process.on("uncaughtException", (err) => {
+  console.error("⚠️  Uncaught Exception (process kept alive):", err.message);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️  Unhandled Rejection (process kept alive):", reason);
+});
+
+// ========================================
 // ENVIRONMENT
 // ========================================
 
@@ -112,12 +124,14 @@ app.use(
 app.get(
   "/api/health",
   (req, res) => {
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = ["disconnected", "connected", "connecting", "disconnecting"];
     res.json({
       success: true,
-      message:
-        "Server is running",
+      message: "Server is running",
       socketIO: true,
       port: PORT,
+      mongodb: dbStatus[dbState] || "unknown",
     });
   }
 );
@@ -203,32 +217,42 @@ app.get(
 // MONGODB
 // ========================================
 
-if (!process.env.MONGODB_URI) {
-  console.error(
-    "❌ MONGODB_URI is missing in .env"
-  );
-} else {
+// ========================================
+// MONGODB CONNECT WITH RETRY
+// ========================================
+
+function connectMongoDB(retries = 3, delay = 10000) {
+  if (!process.env.MONGODB_URI) {
+    console.error("❌ MONGODB_URI is missing in .env");
+    return;
+  }
+
   mongoose
-    .connect(
-      process.env.MONGODB_URI,
-      {
-        serverSelectionTimeoutMS: 15000,
-        connectTimeoutMS: 15000,
-        socketTimeoutMS: 45000,
-      }
-    )
+    .connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 30000,
+    })
     .then(() => {
-      console.log(
-        "MongoDB connected ✅"
-      );
+      console.log("MongoDB connected ✅");
     })
     .catch((error) => {
-      console.error(
-        "MongoDB connection error:",
-        error.message
-      );
+      console.error("MongoDB connection error:", error.message);
+
+      if (retries > 0) {
+        console.log(
+          `🔄 Retrying in ${delay / 1000}s... (${retries} attempt(s) left)`
+        );
+        setTimeout(() => connectMongoDB(retries - 1, delay), delay);
+      } else {
+        console.error(
+          "❌ MongoDB unavailable. Server running without database — login/register will fail until DB is reachable."
+        );
+      }
     });
 }
+
+connectMongoDB();
 
 // ========================================
 // SOCKET.IO JWT AUTHENTICATION
