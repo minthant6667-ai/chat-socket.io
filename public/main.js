@@ -1,5 +1,281 @@
 
 // ========================================
+// NOTIFICATION SOUND
+// ========================================
+
+const notifAudio = new Audio("/message-tone.mp3");
+notifAudio.volume = 0.5;
+
+function playNotifSound() {
+  try {
+    notifAudio.currentTime = 0;
+    notifAudio.play().catch(() => {});
+  } catch (_) {}
+}
+
+// ========================================
+// EMOJI PICKER
+// ========================================
+
+const EMOJIS = [
+  '😀','😂','😍','🥰','😎','🤔','😢','😡',
+  '👍','👎','❤️','🔥','🎉','✅','💯','🙏',
+  '😊','🤣','😭','😱','🤩','😴','🤗','😏',
+  '👋','💪','🎶','🌟','💥','🍕','🚀','😇'
+];
+
+function initEmojiPicker() {
+  const picker = document.getElementById('emoji-picker');
+  const btn    = document.getElementById('emoji-btn');
+  if (!picker || !btn) return;
+
+  // Build emoji buttons
+  EMOJIS.forEach(emoji => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = emoji;
+    b.addEventListener('click', () => {
+      if (messageInput) {
+        const pos = messageInput.selectionStart || messageInput.value.length;
+        messageInput.value =
+          messageInput.value.slice(0, pos) + emoji + messageInput.value.slice(pos);
+        messageInput.focus();
+        messageInput.selectionStart = messageInput.selectionEnd = pos + emoji.length;
+      }
+      picker.classList.add('hidden');
+    });
+    picker.appendChild(b);
+  });
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    picker.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!picker.contains(e.target) && e.target !== btn) {
+      picker.classList.add('hidden');
+    }
+  });
+}
+
+// ========================================
+// DESKTOP NOTIFICATIONS
+// ========================================
+
+function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function showDesktopNotif(title, body) {
+  if (document.hasFocus()) return;
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification(title, { body, icon: '/favicon.ico' });
+    setTimeout(() => n.close(), 4000);
+  } catch (_) {}
+}
+
+// ========================================
+// MOBILE SIDEBAR DRAWER
+// ========================================
+
+function initSidebarDrawer() {
+  const hamburger = document.getElementById('hamburger-btn');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebar-overlay');
+  if (!hamburger || !sidebar || !overlay) return;
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  }
+
+  hamburger.addEventListener('click', openSidebar);
+  overlay.addEventListener('click', closeSidebar);
+
+  // Close sidebar when a user/group is selected on mobile
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.user-button') || e.target.closest('#group-chat-btn')) {
+      if (window.innerWidth <= 700) closeSidebar();
+    }
+  });
+}
+
+// ========================================
+// MESSAGE REACTIONS
+// ========================================
+
+const REACTION_EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
+// reactions: { messageId: { emoji: { count, mine } } }
+const reactions = {};
+
+function addReactionTrigger(msgEl, messageId) {
+  const trigger = document.createElement('button');
+  trigger.className = 'react-trigger';
+  trigger.type = 'button';
+  trigger.textContent = '😊';
+  trigger.title = 'React';
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showReactionPicker(msgEl, messageId, trigger);
+  });
+  msgEl.appendChild(trigger);
+}
+
+function showReactionPicker(msgEl, messageId, anchor) {
+  // Remove any existing picker
+  document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+
+  REACTION_EMOJIS.forEach(emoji => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = emoji;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleReaction(msgEl, messageId, emoji);
+      picker.remove();
+    });
+    picker.appendChild(b);
+  });
+
+  // Position above the message
+  msgEl.appendChild(picker);
+  picker.style.bottom = (msgEl.offsetHeight + 8) + 'px';
+  picker.style.left = '0';
+
+  setTimeout(() => {
+    document.addEventListener('click', () => picker.remove(), { once: true });
+  }, 0);
+}
+
+function toggleReaction(msgEl, messageId, emoji) {
+  if (!reactions[messageId]) reactions[messageId] = {};
+  if (!reactions[messageId][emoji]) reactions[messageId][emoji] = { count: 0, mine: false };
+
+  const r = reactions[messageId][emoji];
+  if (r.mine) {
+    r.count = Math.max(0, r.count - 1);
+    r.mine = false;
+  } else {
+    r.count++;
+    r.mine = true;
+  }
+  if (r.count === 0) delete reactions[messageId][emoji];
+
+  renderReactions(msgEl, messageId);
+}
+
+function renderReactions(msgEl, messageId) {
+  let container = msgEl.querySelector('.message-reactions');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'message-reactions';
+    // Insert before the time element
+    const time = msgEl.querySelector('.message-time');
+    if (time) msgEl.insertBefore(container, time);
+    else msgEl.appendChild(container);
+  }
+  container.innerHTML = '';
+
+  const msgReactions = reactions[messageId] || {};
+  Object.entries(msgReactions).forEach(([emoji, data]) => {
+    if (data.count <= 0) return;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'reaction-chip' + (data.mine ? ' mine' : '');
+    chip.innerHTML = `${emoji} <span class="r-count">${data.count}</span>`;
+    chip.addEventListener('click', () => toggleReaction(msgEl, messageId, emoji));
+    container.appendChild(chip);
+  });
+}
+
+// ========================================
+// READ RECEIPTS
+// ========================================
+
+function addReadReceipt(msgEl, isMine, isPrivate) {
+  if (!isMine || !isPrivate) return;
+  const receipt = document.createElement('div');
+  receipt.className = 'read-receipt sent';
+  receipt.textContent = '✓ Sent';
+  receipt.dataset.receipt = 'true';
+  msgEl.appendChild(receipt);
+}
+
+function markMessageRead(msgEl) {
+  const receipt = msgEl.querySelector('[data-receipt]');
+  if (receipt) {
+    receipt.className = 'read-receipt read';
+    receipt.textContent = '✓✓ Read';
+  }
+}
+
+// ========================================
+// LAST SEEN STATUS
+// ========================================
+
+const lastSeenMap = {};
+
+function setLastSeen(userId, isOnline) {
+  if (!isOnline) {
+    lastSeenMap[String(userId)] = new Date();
+  }
+  updateLastSeenUI(userId, isOnline);
+}
+
+function updateLastSeenUI(userId, isOnline) {
+  const btn = document.querySelector(`[data-user-id="${userId}"]`);
+  if (!btn) return;
+  let statusEl = btn.querySelector('.user-status');
+  if (!statusEl) {
+    const info = btn.querySelector('.user-info');
+    if (!info) return;
+    // Add status below username
+    const nameEl = btn.querySelector('.username');
+    if (nameEl) {
+      statusEl = document.createElement('div');
+      statusEl.className = 'user-status';
+      // Wrap name + status in a column
+      const col = document.createElement('div');
+      col.style.display = 'flex';
+      col.style.flexDirection = 'column';
+      col.style.gap = '1px';
+      nameEl.parentNode.insertBefore(col, nameEl);
+      col.appendChild(nameEl);
+      col.appendChild(statusEl);
+    }
+  }
+  if (!statusEl) return;
+  if (isOnline) {
+    statusEl.className = 'user-status online';
+    statusEl.textContent = 'Online';
+  } else {
+    statusEl.className = 'user-status';
+    const last = lastSeenMap[String(userId)];
+    statusEl.textContent = last ? `Last seen ${formatLastSeen(last)}` : 'Offline';
+  }
+}
+
+function formatLastSeen(date) {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60)  return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return date.toLocaleDateString();
+}
+
+// ========================================
 // DOM ELEMENTS
 // ========================================
 
@@ -273,11 +549,16 @@ async function startChat() {
       `${currentUser.username} (${currentUser.email})`;
   }
 
+  requestNotifPermission();
+
   connectSocket();
 
   await loadUsers();
 
   await selectGroupChat();
+
+  initEmojiPicker();
+  initSidebarDrawer();
 }
 
 // ========================================
@@ -540,12 +821,21 @@ function connectSocket() {
         selectedUser === null &&
         data.room === ROOM
       ) {
+        // Play sound only for messages from others
+        if (
+          currentUser &&
+          String(data.senderId) !== String(currentUser.id)
+        ) {
+          playNotifSound();
+        }
         renderMessage(data);
         return;
       }
 
       if (data.room === ROOM) {
+        playNotifSound();
         increaseGroupUnread();
+        showDesktopNotif('💬 New Group Message', `${data.senderUsername || 'Someone'}: ${data.message}`);
       }
     }
   );
@@ -597,6 +887,8 @@ function connectSocket() {
         String(selectedUser.id) ===
           senderId
       ) {
+        playNotifSound();
+        showDesktopNotif(`💬 ${data.senderUsername || 'Someone'}`, data.message);
         renderMessage(data);
         return;
       }
@@ -605,6 +897,8 @@ function connectSocket() {
       // PRIVATE CHAT NOT OPEN
       // ====================================
 
+      playNotifSound();
+      showDesktopNotif(`💬 ${data.senderUsername || 'Someone'}`, data.message);
       increaseUnread(
         senderId
       );
@@ -765,18 +1059,23 @@ function createUserButton(user) {
   button.dataset.userId =
     String(user.id);
 
+  const initial = escapeHtml(
+    (user.username || "?")[0].toUpperCase()
+  );
+
   button.innerHTML = `
     <div class="user-info">
 
-      <span
-        class="online-dot"
-        data-online-for="${user.id}"
-      ></span>
+      <div class="user-avatar">
+        ${initial}
+        <span
+          class="online-dot"
+          data-online-for="${user.id}"
+        ></span>
+      </div>
 
       <span class="username">
-        ${escapeHtml(
-          user.username
-        )}
+        ${escapeHtml(user.username)}
       </span>
 
     </div>
