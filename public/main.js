@@ -1059,6 +1059,8 @@ function createUserButton(user) {
   button.dataset.userId =
     String(user.id);
 
+  button.setAttribute('data-user-id', String(user.id));
+
   const initial = escapeHtml(
     (user.username || "?")[0].toUpperCase()
   );
@@ -1512,25 +1514,15 @@ if (messageInput) {
 // TYPING UI
 // ========================================
 
-function showTyping(
-  username
-) {
-  if (!feedback) {
-    return;
-  }
-
+function showTyping(username) {
+  if (!feedback) return;
   feedback.innerHTML = `
-    <span class="typing-text">
-      ${escapeHtml(
-        username
-      )}
-      is typing...
-      <span class="typing-dots">
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-    </span>
+    <div class="typing-bubble">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="typing-label">${escapeHtml(username)} is typing</span>
+    </div>
   `;
 }
 
@@ -1733,6 +1725,15 @@ function renderMessage(
   row.appendChild(text);
   row.appendChild(time);
 
+  // Add reaction trigger
+  const msgId = data.id || `msg_${Date.now()}_${Math.random()}`;
+  row.dataset.messageId = msgId;
+  addReactionTrigger(row, msgId);
+
+  // Add read receipt for private messages
+  const isPrivate = data.type === 'private';
+  addReadReceipt(row, mine, isPrivate);
+
   messageContainer.appendChild(
     row
   );
@@ -1791,6 +1792,9 @@ function updateOnlineIndicators(
           "is-online",
           isOnline
         );
+        // Update last seen status
+        const uid = element.dataset.onlineFor;
+        if (uid) setLastSeen(uid, isOnline);
       }
     );
 }
