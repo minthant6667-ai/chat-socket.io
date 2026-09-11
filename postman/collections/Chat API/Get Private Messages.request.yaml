@@ -1,0 +1,19 @@
+$kind: http-request
+name: Get Private Messages
+order: 7000
+method: GET
+url: '{{baseUrl}}/api/messages/private/{{userId}}'
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const res = pm.response.json();
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      pm.test("Has messages array", () => pm.expect(res.messages).to.be.an("array"));
+      pm.test("Each message has type private", () => {
+        res.messages.forEach(m => pm.expect(m.type).to.equal("private"));
+      });
+      console.log("Private messages count:", res.messages.length);

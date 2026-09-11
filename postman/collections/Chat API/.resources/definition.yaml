@@ -1,0 +1,3 @@
+$kind: collection
+name: Chat API
+description: 'Complete API collection for the Chat App — authentication, messaging, and user management.'

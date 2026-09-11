@@ -1,0 +1,18 @@
+$kind: http-request
+name: Get Current User
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/me'
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const res = pm.response.json();
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      pm.test("Has user object", () => pm.expect(res.user).to.be.an("object"));
+      pm.test("User has id", () => pm.expect(res.user.id).to.exist);
+      pm.test("User has username", () => pm.expect(res.user.username).to.be.a("string"));
+      pm.test("User has email", () => pm.expect(res.user.email).to.be.a("string"));

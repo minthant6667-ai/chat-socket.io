@@ -1,0 +1,22 @@
+$kind: http-request
+name: Get All Users
+order: 5000
+method: GET
+url: '{{baseUrl}}/api/messages/users'
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const res = pm.response.json();
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      pm.test("Has users array", () => pm.expect(res.users).to.be.an("array"));
+      pm.test("Each user has id", () => {
+        res.users.forEach(u => pm.expect(u.id).to.exist);
+      });
+      pm.test("Each user has username", () => {
+        res.users.forEach(u => pm.expect(u.username).to.be.a("string"));
+      });
+      console.log("Total users:", res.users.length);

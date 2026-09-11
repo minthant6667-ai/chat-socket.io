@@ -1,0 +1,33 @@
+$kind: http-request
+name: Login
+order: 2000
+method: POST
+url: '{{baseUrl}}/api/auth/login'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "testuser@example.com",
+      "password": "password123"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const res = pm.response.json();
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      pm.test("Has token", () => pm.expect(res.token).to.be.a("string"));
+      pm.test("Has user object", () => pm.expect(res.user).to.be.an("object"));
+      pm.test("User has id", () => pm.expect(res.user.id).to.exist);
+      pm.test("Login message is correct", () => pm.expect(res.message).to.equal("Login successful"));
+      if (res.token) {
+        pm.environment.set("token", res.token);
+        console.log("✅ Token saved to environment");
+      }
+      if (res.user && res.user.id) {
+        pm.environment.set("userId", res.user.id);
+        console.log("✅ userId saved:", res.user.id);
+      }

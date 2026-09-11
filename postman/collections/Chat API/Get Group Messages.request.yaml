@@ -1,0 +1,29 @@
+$kind: http-request
+name: Get Group Messages
+order: 6000
+method: GET
+url: '{{baseUrl}}/api/messages/group'
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+queryParams:
+  - key: room
+    value: general
+    description: The chat room name
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const res = pm.response.json();
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      pm.test("Has messages array", () => pm.expect(res.messages).to.be.an("array"));
+      pm.test("Each message has id", () => {
+        res.messages.forEach(m => pm.expect(m.id).to.exist);
+      });
+      pm.test("Each message has senderId", () => {
+        res.messages.forEach(m => pm.expect(m.senderId).to.exist);
+      });
+      pm.test("Each message has message text", () => {
+        res.messages.forEach(m => pm.expect(m.message).to.be.a("string"));
+      });
+      console.log("Group messages count:", res.messages.length);
